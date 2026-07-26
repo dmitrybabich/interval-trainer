@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AudioEngine } from "@/audio/AudioEngine";
+import { i18n } from "@/i18n";
 import {
   ANCHOR_HOLD_MS,
   DEFAULT_PREFS,
@@ -184,7 +185,7 @@ export function useTrainer(): {
     idx: 0,
     liveNote: "—",
     liveCents: "",
-    status: "Listen to the target, then sing it.",
+    status: i18n.t("status.listenGuided"),
     statusVariant: "",
     cue: "listen",
     sungMidi: null,
@@ -263,7 +264,7 @@ export function useTrainer(): {
     patchUi({
       targets: notes,
       idx: 0,
-      status: s.mode === "ear" ? "Here's your start note — sing it, then find the next by ear." : "Listen to the target, then sing it.",
+      status: s.mode === "ear" ? i18n.t("status.listenEar") : i18n.t("status.listenGuided"),
       statusVariant: "",
       liveNote: "—",
       liveCents: "",
@@ -328,11 +329,11 @@ export function useTrainer(): {
         covered: [...s.covered],
         hasDrone: engine.hasDrone(),
         status: done
-          ? "🎉 Nailed it! Here's what you sang…"
+          ? i18n.t("status.nailedIt")
           : silent
             ? ui.status
             : nextTarget !== undefined
-              ? `Good! Now sing ${midiToName(nextTarget)}.`
+              ? i18n.t("status.goodNext", { note: midiToName(nextTarget) })
               : ui.status,
         statusVariant: done ? "good" : silent ? ui.statusVariant : "",
       });
@@ -413,7 +414,11 @@ export function useTrainer(): {
           const isFinal = s.idx === s.targets.length - 1;
           const need = single ? s.holdMs : isFinal ? TOUCH_MS : PASS_MS;
           const pct = Math.min(100, (s.holding / need) * 100);
-          liveCents = `${cents > 0 ? "+" : ""}${cents.toFixed(0)} cents  (target ${midiToName(target)})`;
+          liveCents = i18n.t("status.cents", {
+            sign: cents > 0 ? "+" : "",
+            cents: cents.toFixed(0),
+            note: midiToName(target),
+          });
 
           // Two-phase support only for the single-note sustain drill.
           if (single) {
@@ -428,8 +433,8 @@ export function useTrainer(): {
           const next = s.targets[s.idx + 1];
           status =
             single || isFinal
-              ? `On pitch — hold… ${pct.toFixed(0)}%`
-              : `Good — now leap to ${next !== undefined ? midiToName(next) : "?"} ↗`;
+              ? i18n.t("status.onPitchHold", { pct: pct.toFixed(0) })
+              : i18n.t("status.leapTo", { note: next !== undefined ? midiToName(next) : "?" });
           statusVariant = "good";
 
           if (s.holding >= need) advance(!single && !isFinal);
@@ -440,20 +445,24 @@ export function useTrainer(): {
           s.wrongHold += dt;
           if (s.wrongHold >= WRONG_NOTE_HINT_MS) {
             s.wrongHold = 0;
-            status = "Here it is again — listen…";
+            status = i18n.t("status.hearItAgain");
             statusVariant = "";
             const startNote = s.targets[0];
             if (startNote !== undefined) engine.playHint(midiToFreq(startNote));
           } else {
-            liveCents = `${cents > 0 ? "+" : ""}${cents.toFixed(0)} cents  (target ${midiToName(target)})`;
+            liveCents = i18n.t("status.cents", {
+              sign: cents > 0 ? "+" : "",
+              cents: cents.toFixed(0),
+              note: midiToName(target),
+            });
             const near = absC < s.tolCents * 2;
             status = near
               ? cents > 0
-                ? "A touch high ↓"
-                : "A touch low ↑"
+                ? i18n.t("status.touchHigh")
+                : i18n.t("status.touchLow")
               : cents > 0
-                ? "Too high — come down"
-                : "Too low — go up";
+                ? i18n.t("status.tooHigh")
+                : i18n.t("status.tooLow");
             statusVariant = "near";
           }
         }
@@ -577,7 +586,7 @@ export function useTrainer(): {
     patchUi({
       idx: s.idx,
       hasDrone: false,
-      status: done ? "Done. New exercise?" : next !== undefined ? `Sing ${midiToName(next)}.` : ui.status,
+      status: done ? i18n.t("status.done") : next !== undefined ? i18n.t("status.sing", { note: midiToName(next) }) : ui.status,
       statusVariant: done ? "good" : "",
     });
   }, [engine, patchUi, ui.status]);

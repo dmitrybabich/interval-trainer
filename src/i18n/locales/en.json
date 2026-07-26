@@ -1,0 +1,130 @@
+{
+  "app": {
+    "title": "Interval Trainer",
+    "tagline": "Sing it. Hold it. Hear the chime.",
+    "pitchCredit": "Pitch detection by pitchy"
+  },
+  "setup": {
+    "yourRange": "Your range",
+    "calibrated": "Calibrated · tap to redo",
+    "estimate": "Estimate · tap to calibrate",
+    "chooseInterval": "Choose an interval",
+    "summary": "{{mode}} · {{direction}}",
+    "summaryWithGuide": "{{mode}} · {{direction}} · guide tone",
+    "ascending": "ascending",
+    "descending": "descending"
+  },
+  "levels": {
+    "single": { "name": "Single note", "desc": "Find one pitch and hold it." },
+    "minor2": { "name": "Minor 2nd", "desc": "Half step — 1 semitone." },
+    "major2": { "name": "Major 2nd", "desc": "Whole tone — 2 semitones." },
+    "minor3": { "name": "Minor 3rd", "desc": "3 semitones." },
+    "major3": { "name": "Major 3rd", "desc": "4 semitones." },
+    "perfect4": { "name": "Perfect 4th", "desc": "5 semitones." },
+    "perfect5": { "name": "Perfect 5th", "desc": "7 semitones." },
+    "octave": { "name": "Octave", "desc": "12 semitones." },
+    "majorTriad": { "name": "Major triad", "desc": "Maj 3rd then min 3rd (do-mi-sol)." }
+  },
+  "trainer": {
+    "backToLevels": "Back to levels",
+    "playStartNote": "Play start note",
+    "replay": "Replay the interval",
+    "directionUp": "Direction: up (tap for down)",
+    "directionDown": "Direction: down (tap for up)",
+    "skip": "Skip this note",
+    "newExercise": "New exercise",
+    "cueListen": "Listen",
+    "cueSing": "Sing now",
+    "cueNext": "Next…",
+    "rangeCoverage": "range {{hit}}/{{total}}",
+    "rangeCovered": "✓ Whole range covered"
+  },
+  "status": {
+    "listenGuided": "Listen to the target, then sing it.",
+    "listenEar": "Here's your start note — sing it, then find the next by ear.",
+    "nailedIt": "🎉 Nailed it! Here's what you sang…",
+    "goodNext": "Good! Now sing {{note}}.",
+    "onPitchHold": "On pitch — hold… {{pct}}%",
+    "leapTo": "Good — now leap to {{note}} ↗",
+    "hearItAgain": "Here it is again — listen…",
+    "touchHigh": "A touch high ↓",
+    "touchLow": "A touch low ↑",
+    "tooHigh": "Too high — come down",
+    "tooLow": "Too low — go up",
+    "cents": "{{sign}}{{cents}} cents  (target {{note}})",
+    "done": "Done. New exercise?",
+    "sing": "Sing {{note}}."
+  },
+  "calibrate": {
+    "back": "Back",
+    "cancel": "Cancel",
+    "title": "Set your vocal range",
+    "hintLow": "Sing your LOWEST comfortable \"ah\" — not a growl, just easy and low.",
+    "hintHigh": "Now sing your HIGHEST comfortable \"ah\" — no straining.",
+    "captureLow": "Hold, then press to capture LOW",
+    "captureHigh": "Hold, then press to capture HIGH",
+    "capturing": "Capturing… keep holding",
+    "cueReady": "Sing, then press capture",
+    "cueCapturing": "🎤 Hold it steady…",
+    "noSteady": "Didn't catch a steady note — try again.",
+    "gotLow": "Got your low note.",
+    "resultLow": "Low: {{note}}",
+    "saved": "Saved: {{lo}} – {{hi}} ✓"
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "Tune the exercise and how it plays. Saved automatically.",
+    "sectionExercise": "Exercise",
+    "sectionFeedback": "Feedback",
+    "sectionVoice": "Voice & appearance",
+    "mode": "Mode",
+    "modeHint": "Guided plays every note; ear gives only the start.",
+    "direction": "Direction",
+    "directionHint": "Which way the interval leaps.",
+    "sweep": "Sweep",
+    "sweepHint": "One octave at a time, or the whole range.",
+    "guideTone": "Guide tone",
+    "guideToneHint": "A quiet drone holds note 1 until you land it.",
+    "foundChime": "Found-note chime",
+    "foundChimeHint": "Play the note the moment you land on it.",
+    "precision": "Precision",
+    "precisionHint": "How close counts as on-pitch.",
+    "hold": "Hold to confirm",
+    "holdHint": "How long to hold a single note.",
+    "voiceRange": "Voice range",
+    "voiceRangeMeasured": "Measured from your calibration.",
+    "voiceRangePreset": "A preset until you calibrate.",
+    "voiceRangeRedo": "{{lo}} – {{hi}} · redo",
+    "theme": "Theme",
+    "themeHint": "Light or dark.",
+    "language": "Language",
+    "languageHint": "Interface language."
+  },
+  "options": {
+    "mode": { "guided": "Guided", "ear": "Ear" },
+    "direction": { "up": "Up ↑", "down": "Down ↓" },
+    "octaveMode": { "on": "One octave", "off": "Full range" },
+    "guide": { "off": "Off", "on": "On" },
+    "foundHint": { "on": "On", "off": "Off" },
+    "theme": { "light": "Light", "dark": "Dark" },
+    "range": {
+      "low": "Low (bass / baritone)",
+      "mid": "Mid (tenor / alto)",
+      "high": "High (soprano)"
+    },
+    "tol": {
+      "50": "Closest note wins (±50¢)",
+      "45": "Easy (±45 cents)",
+      "30": "Normal (±30 cents)",
+      "18": "Strict (±18 cents)"
+    },
+    "hold": {
+      "350": "Quick (0.35s)",
+      "600": "Normal (0.6s)",
+      "1000": "Long (1.0s)",
+      "2000": "Very long (2.0s)",
+      "3000": "Extra long (3.0s)",
+      "4000": "Longest (4.0s)"
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,17 +22,18 @@ interface Props {
 }
 
 export function CalibrationScreen({ ui, onCapture, onBack }: Props) {
+  const { t } = useTranslation();
   return (
     <div className="mx-auto w-full max-w-xl">
       <Card className="rounded-3xl">
         <CardContent className="p-6">
           <div className="mb-4 flex items-center justify-between">
             <Button variant="ghost" size="sm" onClick={onBack} className="gap-1.5 text-muted-foreground">
-              <ArrowLeft className="size-4" /> Back
+              <ArrowLeft className="size-4" /> {t("calibrate.back")}
             </Button>
-            <div className="text-sm font-semibold">Set your vocal range</div>
+            <div className="text-sm font-semibold">{t("calibrate.title")}</div>
             <Button variant="ghost" size="sm" onClick={onBack} className="text-muted-foreground">
-              Cancel
+              {t("calibrate.cancel")}
             </Button>
           </div>
 
@@ -50,7 +52,7 @@ export function CalibrationScreen({ ui, onCapture, onBack }: Props) {
                 ui.cue === "ready" && "border-primary/50 text-primary",
               )}
             >
-              {ui.cue === "capturing" ? "🎤 Hold it steady…" : "Sing, then press capture"}
+              {ui.cue === "capturing" ? t("calibrate.cueCapturing") : t("calibrate.cueReady")}
             </motion.div>
           </div>
 

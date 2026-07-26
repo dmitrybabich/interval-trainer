@@ -12,20 +12,20 @@ describe("LEVELS", () => {
   });
 
   it("interval levels each drill an exact fixed semitone leap", () => {
-    // Names → expected semitone steps (this is the parity spec).
+    // Level key → expected semitone steps (this is the parity spec).
     const expected: Record<string, readonly number[]> = {
-      "2 · Minor 2nd (малая секунда)": [1],
-      "3 · Major 2nd (большая секунда)": [2],
-      "4 · Minor 3rd (малая терция)": [3],
-      "5 · Major 3rd (большая терция)": [4],
-      "6 · Perfect 4th (кварта)": [5],
-      "7 · Perfect 5th (квинта)": [7],
-      "8 · Octave (октава)": [12],
-      "9 · Major triad (мажорное трезвучие)": [4, 3],
+      minor2: [1],
+      major2: [2],
+      minor3: [3],
+      major3: [4],
+      perfect4: [5],
+      perfect5: [7],
+      octave: [12],
+      majorTriad: [4, 3],
     };
-    for (const [name, steps] of Object.entries(expected)) {
-      const lv = LEVELS.find((l) => l.name === name);
-      expect(lv, name).toBeDefined();
+    for (const [key, steps] of Object.entries(expected)) {
+      const lv = LEVELS.find((l) => l.key === key);
+      expect(lv, key).toBeDefined();
       expect(lv?.steps).toEqual(steps);
     }
   });

@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { AudioEngine } from "@/audio/AudioEngine";
+import { i18n } from "@/i18n";
 import { midiToName } from "@/lib/music";
 import { saveRange } from "@/lib/persistence";
 
@@ -48,8 +49,8 @@ export function useCalibration(engine: AudioEngine, active: boolean): {
     phase: "low",
     cue: "ready",
     liveNote: "—",
-    hint: 'Sing your LOWEST comfortable "ah" — not a growl, just easy and low.',
-    actionLabel: "Hold, then press to capture LOW",
+    hint: i18n.t("calibrate.hintLow"),
+    actionLabel: i18n.t("calibrate.captureLow"),
     status: "",
     statusVariant: "",
     result: "",
@@ -73,8 +74,8 @@ export function useCalibration(engine: AudioEngine, active: boolean): {
       phase: "low",
       cue: "ready",
       liveNote: "—",
-      hint: 'Sing your LOWEST comfortable "ah" — not a growl, just easy and low.',
-      actionLabel: "Hold, then press to capture LOW",
+      hint: i18n.t("calibrate.hintLow"),
+      actionLabel: i18n.t("calibrate.captureLow"),
       status: "",
       statusVariant: "",
       result: "",
@@ -124,7 +125,7 @@ export function useCalibration(engine: AudioEngine, active: boolean): {
       phaseRef.current = "done";
       patch({
         phase: "done",
-        result: `Saved: ${midiToName(finalLo)} – ${midiToName(finalHi)} ✓`,
+        result: i18n.t("calibrate.saved", { lo: midiToName(finalLo), hi: midiToName(finalHi) }),
         status: "",
         statusVariant: "",
         finishedRange: { lo: finalLo, hi: finalHi },
@@ -140,7 +141,7 @@ export function useCalibration(engine: AudioEngine, active: boolean): {
     patch({
       capturing: true,
       cue: "capturing",
-      actionLabel: "Capturing… keep holding",
+      actionLabel: i18n.t("calibrate.capturing"),
     });
     window.setTimeout(() => {
       capturingRef.current = false;
@@ -150,10 +151,9 @@ export function useCalibration(engine: AudioEngine, active: boolean): {
         patch({
           capturing: false,
           cue: "ready",
-          status: "Didn't catch a steady note — try again.",
+          status: i18n.t("calibrate.noSteady"),
           statusVariant: "near",
-          actionLabel:
-            currentPhase === "low" ? "Hold, then press to capture LOW" : "Hold, then press to capture HIGH",
+          actionLabel: currentPhase === "low" ? i18n.t("calibrate.captureLow") : i18n.t("calibrate.captureHigh"),
         });
         return;
       }
@@ -164,11 +164,11 @@ export function useCalibration(engine: AudioEngine, active: boolean): {
           cue: "ready",
           capturing: false,
           lowCaptured: val,
-          result: `Low: ${midiToName(val)}`,
-          hint: 'Now sing your HIGHEST comfortable "ah" — no straining.',
-          status: "Got your low note.",
+          result: i18n.t("calibrate.resultLow", { note: midiToName(val) }),
+          hint: i18n.t("calibrate.hintHigh"),
+          status: i18n.t("calibrate.gotLow"),
           statusVariant: "good",
-          actionLabel: "Hold, then press to capture HIGH",
+          actionLabel: i18n.t("calibrate.captureHigh"),
         });
       } else if (currentPhase === "high") {
         patch({ capturing: false });

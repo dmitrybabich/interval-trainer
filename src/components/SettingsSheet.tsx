@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 import { Segmented } from "@/components/ui/segmented";
 import {
   Select,
@@ -8,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { Theme } from "@/hooks/useTheme";
+import { SUPPORTED_LANGUAGES } from "@/i18n";
 import {
   DIR_OPTIONS,
   FOUND_HINT_OPTIONS,
@@ -93,59 +96,76 @@ export function SettingsSheet({
   savedRange,
   onCalibrate,
 }: Props) {
+  const { t, i18n } = useTranslation();
+
+  // Localize an option table's labels for the given options.<group> namespace.
+  function localize<V extends string>(
+    group: string,
+    options: readonly { readonly value: V; readonly label: string }[],
+  ): readonly { readonly value: V; readonly label: string }[] {
+    return options.map((o) => ({ value: o.value, label: t(`options.${group}.${o.value}`) }));
+  }
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md">
         <SheetHeader>
-          <SheetTitle>Settings</SheetTitle>
-          <SheetDescription>Tune the exercise and how it plays. Saved automatically.</SheetDescription>
+          <SheetTitle>{t("settings.title")}</SheetTitle>
+          <SheetDescription>{t("settings.description")}</SheetDescription>
         </SheetHeader>
 
         <div className="mt-3">
-          <Section title="Exercise">
-            <Row label="Mode" hint="Guided plays every note; ear gives only the start.">
-              <Segmented value={prefs.mode} options={MODE_OPTIONS} onValueChange={(v) => setPref("mode", v)} />
+          <Section title={t("settings.sectionExercise")}>
+            <Row label={t("settings.mode")} hint={t("settings.modeHint")}>
+              <Segmented value={prefs.mode} options={localize("mode", MODE_OPTIONS)} onValueChange={(v) => setPref("mode", v)} />
             </Row>
-            <Row label="Direction" hint="Which way the interval leaps.">
-              <Segmented value={prefs.direction} options={DIR_OPTIONS} onValueChange={(v) => setPref("direction", v)} />
+            <Row label={t("settings.direction")} hint={t("settings.directionHint")}>
+              <Segmented value={prefs.direction} options={localize("direction", DIR_OPTIONS)} onValueChange={(v) => setPref("direction", v)} />
             </Row>
-            <Row label="Sweep" hint="One octave at a time, or the whole range.">
-              <Segmented value={prefs.octaveMode} options={OCTAVE_MODE_OPTIONS} onValueChange={(v) => setPref("octaveMode", v)} />
-            </Row>
-          </Section>
-
-          <Section title="Feedback">
-            <Row label="Guide tone" hint="A quiet drone holds note 1 until you land it.">
-              <Segmented value={prefs.guide} options={GUIDE_OPTIONS} onValueChange={(v) => setPref("guide", v)} />
-            </Row>
-            <Row label="Found-note chime" hint="Play the note the moment you land on it.">
-              <Segmented value={prefs.foundHint} options={FOUND_HINT_OPTIONS} onValueChange={(v) => setPref("foundHint", v)} />
-            </Row>
-            <Row label="Precision" hint="How close counts as on-pitch.">
-              <SelectRow value={prefs.tol} options={TOL_OPTIONS} onValueChange={(v) => setPref("tol", v)} />
-            </Row>
-            <Row label="Hold to confirm" hint="How long to hold a single note.">
-              <SelectRow value={prefs.hold} options={HOLD_OPTIONS} onValueChange={(v) => setPref("hold", v)} />
+            <Row label={t("settings.sweep")} hint={t("settings.sweepHint")}>
+              <Segmented value={prefs.octaveMode} options={localize("octaveMode", OCTAVE_MODE_OPTIONS)} onValueChange={(v) => setPref("octaveMode", v)} />
             </Row>
           </Section>
 
-          <Section title="Voice & appearance">
+          <Section title={t("settings.sectionFeedback")}>
+            <Row label={t("settings.guideTone")} hint={t("settings.guideToneHint")}>
+              <Segmented value={prefs.guide} options={localize("guide", GUIDE_OPTIONS)} onValueChange={(v) => setPref("guide", v)} />
+            </Row>
+            <Row label={t("settings.foundChime")} hint={t("settings.foundChimeHint")}>
+              <Segmented value={prefs.foundHint} options={localize("foundHint", FOUND_HINT_OPTIONS)} onValueChange={(v) => setPref("foundHint", v)} />
+            </Row>
+            <Row label={t("settings.precision")} hint={t("settings.precisionHint")}>
+              <SelectRow value={prefs.tol} options={localize("tol", TOL_OPTIONS)} onValueChange={(v) => setPref("tol", v)} />
+            </Row>
+            <Row label={t("settings.hold")} hint={t("settings.holdHint")}>
+              <SelectRow value={prefs.hold} options={localize("hold", HOLD_OPTIONS)} onValueChange={(v) => setPref("hold", v)} />
+            </Row>
+          </Section>
+
+          <Section title={t("settings.sectionVoice")}>
             {savedRange ? (
-              <Row label="Voice range" hint="Measured from your calibration.">
+              <Row label={t("settings.voiceRange")} hint={t("settings.voiceRangeMeasured")}>
                 <button
                   onClick={onCalibrate}
                   className="rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors hover:border-primary/60"
                 >
-                  {midiToName(savedRange.lo)} – {midiToName(savedRange.hi)} · redo
+                  {t("settings.voiceRangeRedo", { lo: midiToName(savedRange.lo), hi: midiToName(savedRange.hi) })}
                 </button>
               </Row>
             ) : (
-              <Row label="Voice range" hint="A preset until you calibrate.">
-                <SelectRow value={prefs.range} options={RANGE_OPTIONS} onValueChange={(v) => setPref("range", v)} />
+              <Row label={t("settings.voiceRange")} hint={t("settings.voiceRangePreset")}>
+                <SelectRow value={prefs.range} options={localize("range", RANGE_OPTIONS)} onValueChange={(v) => setPref("range", v)} />
               </Row>
             )}
-            <Row label="Theme" hint="Light or dark.">
-              <Segmented value={theme} options={THEME_OPTIONS} onValueChange={onThemeChange} />
+            <Row label={t("settings.theme")} hint={t("settings.themeHint")}>
+              <Segmented value={theme} options={localize("theme", THEME_OPTIONS)} onValueChange={onThemeChange} />
+            </Row>
+            <Row label={t("settings.language")} hint={t("settings.languageHint")}>
+              <Segmented
+                value={i18n.resolvedLanguage ?? "en"}
+                options={SUPPORTED_LANGUAGES}
+                onValueChange={(v) => void i18n.changeLanguage(v)}
+              />
             </Row>
           </Section>
         </div>

@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { SlidersHorizontal } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import { CalibrationScreen } from "@/components/screens/CalibrationScreen";
@@ -23,6 +24,7 @@ function isTrainerPath(pathname: string): boolean {
 }
 
 function AppInner() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -120,8 +122,8 @@ function AppInner() {
     <div className="flex min-h-screen flex-col">
       <header className="mx-auto flex w-full max-w-xl items-center justify-between px-4 pb-2 pt-6">
         <div>
-          <h1 className="text-lg font-semibold tracking-tight">Interval Trainer</h1>
-          <p className="text-xs text-muted-foreground">Sing it. Hold it. Hear the chime.</p>
+          <h1 className="text-lg font-semibold tracking-tight">{t("app.title")}</h1>
+          <p className="text-xs text-muted-foreground">{t("app.tagline")}</p>
         </div>
         <Button
           variant="ghost"
@@ -183,7 +185,7 @@ function AppInner() {
           rel="noopener"
           className="transition-colors hover:text-foreground"
         >
-          Pitch detection by pitchy
+          {t("app.pitchCredit")}
         </a>
       </footer>
 

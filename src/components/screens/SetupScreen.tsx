@@ -1,8 +1,8 @@
 import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import type { Prefs } from "@/lib/constants";
-import { MODE_OPTIONS } from "@/lib/constants";
 import { LEVELS } from "@/lib/levels";
 import { midiToName, RANGE_BASE } from "@/lib/music";
 
@@ -54,13 +54,19 @@ function IntervalGlyph({ steps, direction }: { steps: readonly number[]; directi
 }
 
 export function SetupScreen({ prefs, savedRange, onStartLevel, onCalibrate, status }: Props) {
-  const modeLabel = MODE_OPTIONS.find((o) => o.value === prefs.mode)?.label.split(" ")[0] ?? prefs.mode;
+  const { t } = useTranslation();
+  const modeLabel = t(`options.mode.${prefs.mode}`);
+  const dirLabel = prefs.direction === "down" ? t("setup.descending") : t("setup.ascending");
+  const summary =
+    prefs.guide === "on"
+      ? t("setup.summaryWithGuide", { mode: modeLabel, direction: dirLabel })
+      : t("setup.summary", { mode: modeLabel, direction: dirLabel });
 
   // Show the calibrated range if we have it, otherwise the estimate the app
   // falls back to (derived from the voice-range setting).
   const base = RANGE_BASE[prefs.range];
   const shownRange = savedRange ?? { lo: base - RANGE_LOW_OFFSET, hi: base + RANGE_HIGH_OFFSET };
-  const rangeCaption = savedRange ? "Calibrated · tap to redo" : "Estimate · tap to calibrate";
+  const rangeCaption = savedRange ? t("setup.calibrated") : t("setup.estimate");
 
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col gap-5">
@@ -70,7 +76,7 @@ export function SetupScreen({ prefs, savedRange, onStartLevel, onCalibrate, stat
         className="theme-fade group flex w-full items-center justify-between rounded-2xl border bg-card px-4 py-3 text-left transition-colors hover:border-primary/60"
       >
         <div>
-          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Your range</div>
+          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{t("setup.yourRange")}</div>
           <div className="mt-0.5 text-lg font-semibold">
             {midiToName(shownRange.lo)} – {midiToName(shownRange.hi)}
           </div>
@@ -81,42 +87,35 @@ export function SetupScreen({ prefs, savedRange, onStartLevel, onCalibrate, stat
 
       {/* Section heading */}
       <div className="px-1">
-        <h2 className="text-lg font-semibold">Choose an interval</h2>
-        <p className="text-sm text-muted-foreground">
-          {modeLabel} · {prefs.direction === "down" ? "descending" : "ascending"}
-          {prefs.guide === "on" ? " · guide tone" : ""}
-        </p>
+        <h2 className="text-lg font-semibold">{t("setup.chooseInterval")}</h2>
+        <p className="text-sm text-muted-foreground">{summary}</p>
       </div>
 
       {/* Levels as the hero — a clean list of interval cards. */}
       <div className="flex flex-col gap-2.5">
-        {LEVELS.map((lv, i) => {
-          const [num, ...rest] = lv.name.split(" · ");
-          const title = rest.join(" · ");
-          return (
-            <motion.button
-              key={lv.name}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.035, type: "spring", stiffness: 320, damping: 30 }}
-              whileHover={{ y: -2 }}
-              whileTap={{ scale: 0.99 }}
-              onClick={() => onStartLevel(i)}
-              className="theme-fade group flex items-center gap-4 rounded-2xl border bg-card p-4 text-left shadow-sm transition-colors hover:border-primary/60"
-            >
-              <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-muted text-sm font-bold text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
-                {num}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate font-semibold">{title}</div>
-                <div className="truncate text-xs text-muted-foreground">{lv.desc}</div>
-              </div>
-              <div className="hidden shrink-0 sm:block">
-                <IntervalGlyph steps={lv.steps} direction={prefs.direction} />
-              </div>
-            </motion.button>
-          );
-        })}
+        {LEVELS.map((lv, i) => (
+          <motion.button
+            key={lv.key}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.035, type: "spring", stiffness: 320, damping: 30 }}
+            whileHover={{ y: -2 }}
+            whileTap={{ scale: 0.99 }}
+            onClick={() => onStartLevel(i)}
+            className="theme-fade group flex items-center gap-4 rounded-2xl border bg-card p-4 text-left shadow-sm transition-colors hover:border-primary/60"
+          >
+            <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-muted text-sm font-bold text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
+              {i + 1}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate font-semibold">{t(`levels.${lv.key}.name`)}</div>
+              <div className="truncate text-xs text-muted-foreground">{t(`levels.${lv.key}.desc`)}</div>
+            </div>
+            <div className="hidden shrink-0 sm:block">
+              <IntervalGlyph steps={lv.steps} direction={prefs.direction} />
+            </div>
+          </motion.button>
+        ))}
       </div>
 
       {status && <div className="text-center text-sm text-[hsl(var(--near))]">{status}</div>}
