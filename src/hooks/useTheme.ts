@@ -19,7 +19,7 @@ function readInitial(): Theme {
 }
 
 /** Owns the light/dark theme: toggles `.dark` on <html> and persists the choice. */
-export function useTheme(): { theme: Theme; toggle: () => void } {
+export function useTheme(): { theme: Theme; toggle: () => void; setTheme: (theme: Theme) => void } {
   const [theme, setTheme] = useState<Theme>(readInitial);
 
   useEffect(() => {
@@ -37,5 +37,5 @@ export function useTheme(): { theme: Theme; toggle: () => void } {
 
   const toggle = useCallback(() => setTheme((t) => (t === "dark" ? "light" : "dark")), []);
 
-  return { theme, toggle };
+  return { theme, toggle, setTheme };
 }

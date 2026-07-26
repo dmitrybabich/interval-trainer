@@ -1,18 +1,21 @@
 import { motion } from "framer-motion";
-import { SlidersHorizontal, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import type { Prefs } from "@/lib/constants";
 import { MODE_OPTIONS } from "@/lib/constants";
 import { LEVELS } from "@/lib/levels";
-import { midiToName } from "@/lib/music";
+import { midiToName, RANGE_BASE } from "@/lib/music";
+
+// Mirrors the fallback in App.beginLevel so the card previews the range an
+// uncalibrated exercise will actually use.
+const RANGE_LOW_OFFSET = 7;
+const RANGE_HIGH_OFFSET = 12;
 
 interface Props {
   prefs: Prefs;
   savedRange: { lo: number; hi: number } | null;
   onStartLevel: (idx: number) => void;
   onCalibrate: () => void;
-  onOpenSettings: () => void;
   status: string;
 }
 
@@ -50,36 +53,31 @@ function IntervalGlyph({ steps, direction }: { steps: readonly number[]; directi
   );
 }
 
-export function SetupScreen({
-  prefs,
-  savedRange,
-  onStartLevel,
-  onCalibrate,
-  onOpenSettings,
-  status,
-}: Props) {
+export function SetupScreen({ prefs, savedRange, onStartLevel, onCalibrate, status }: Props) {
   const modeLabel = MODE_OPTIONS.find((o) => o.value === prefs.mode)?.label.split(" ")[0] ?? prefs.mode;
+
+  // Show the calibrated range if we have it, otherwise the estimate the app
+  // falls back to (derived from the voice-range setting).
+  const base = RANGE_BASE[prefs.range];
+  const shownRange = savedRange ?? { lo: base - RANGE_LOW_OFFSET, hi: base + RANGE_HIGH_OFFSET };
+  const rangeCaption = savedRange ? "Calibrated · tap to redo" : "Estimate · tap to calibrate";
 
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col gap-5">
-      {/* Toolbar: range + settings, compact and quiet. */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={onCalibrate}
-          className="theme-fade group flex flex-1 items-center justify-between rounded-2xl border bg-card px-4 py-3 text-left transition-colors hover:border-primary/60"
-        >
-          <div>
-            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Your range</div>
-            <div className="mt-0.5 font-semibold">
-              {savedRange ? `${midiToName(savedRange.lo)} – ${midiToName(savedRange.hi)}` : "Tap to calibrate"}
-            </div>
+      {/* Your range — tap to calibrate. */}
+      <button
+        onClick={onCalibrate}
+        className="theme-fade group flex w-full items-center justify-between rounded-2xl border bg-card px-4 py-3 text-left transition-colors hover:border-primary/60"
+      >
+        <div>
+          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Your range</div>
+          <div className="mt-0.5 text-lg font-semibold">
+            {midiToName(shownRange.lo)} – {midiToName(shownRange.hi)}
           </div>
-          <Sparkles className="size-4 text-muted-foreground transition-colors group-hover:text-primary" />
-        </button>
-        <Button variant="outline" size="icon" onClick={onOpenSettings} className="size-[58px] rounded-2xl" title="Settings">
-          <SlidersHorizontal className="size-5" />
-        </Button>
-      </div>
+          <div className="text-[11px] text-muted-foreground">{rangeCaption}</div>
+        </div>
+        <Sparkles className="size-4 text-muted-foreground transition-colors group-hover:text-primary" />
+      </button>
 
       {/* Section heading */}
       <div className="px-1">
