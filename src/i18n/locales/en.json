@@ -31,12 +31,10 @@
     "replay": "Replay the interval",
     "directionUp": "Direction: up (tap for down)",
     "directionDown": "Direction: down (tap for up)",
-    "skip": "Skip this note",
     "newExercise": "New exercise",
     "cueListen": "Listen",
     "cueSing": "Sing now",
     "cueNext": "Next…",
-    "rangeCoverage": "range {{hit}}/{{total}}",
     "rangeCovered": "✓ Whole range covered"
   },
   "status": {
@@ -51,9 +49,7 @@
     "touchLow": "A touch low ↑",
     "tooHigh": "Too high — come down",
     "tooLow": "Too low — go up",
-    "cents": "{{sign}}{{cents}} cents  (target {{note}})",
-    "done": "Done. New exercise?",
-    "sing": "Sing {{note}}."
+    "cents": "{{sign}}{{cents}} cents  (target {{note}})"
   },
   "calibrate": {
     "back": "Back",

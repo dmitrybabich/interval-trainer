@@ -12,6 +12,7 @@ interface Props {
   tolCents: number;
   loMidi: number;
   hiMidi: number;
+  covered: readonly number[];
   theme: "light" | "dark";
   trailRef: () => readonly (number | null)[];
   onFrame: (cb: (dt: number) => void) => () => void;
@@ -27,6 +28,9 @@ function cssHslA(varName: string, alpha: number): string {
 }
 
 const LEFT_GUTTER = 44;
+// Coverage dot sits in the gutter, just left of the note label.
+const COVERAGE_DOT_X = 34;
+const COVERAGE_DOT_R = 3;
 
 /**
  * Canvas pitch meter: the hero of the trainer. Draws target lines, a tolerance
@@ -43,13 +47,14 @@ export function PitchMeter({
   tolCents,
   loMidi,
   hiMidi,
+  covered,
   theme,
   trailRef,
   onFrame,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const propsRef = useRef({ sungMidi, target, targets, currentIdx, done, tolCents, loMidi, hiMidi });
-  propsRef.current = { sungMidi, target, targets, currentIdx, done, tolCents, loMidi, hiMidi };
+  const propsRef = useRef({ sungMidi, target, targets, currentIdx, done, tolCents, loMidi, hiMidi, covered });
+  propsRef.current = { sungMidi, target, targets, currentIdx, done, tolCents, loMidi, hiMidi, covered };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -68,6 +73,8 @@ export function PitchMeter({
       trail: cssHsl("--foreground"),
       pastLine: cssHslA("--good", 0.6),
       upLine: cssHslA("--primary", 0.35),
+      coveredDot: cssHsl("--good"),
+      uncoveredDot: cssHslA("--muted-foreground", 0.4),
     };
 
     const draw = () => {
@@ -90,7 +97,9 @@ export function PitchMeter({
       const axisSpan = Math.max(1, axisHi - axisLo);
       const yFor = (m: number) => h - ((m - axisLo) / axisSpan) * h;
 
-      // Semitone gridlines; label naturals on the left.
+      // Semitone gridlines; label naturals on the left. A coverage dot in the
+      // gutter marks every note you've already trained (green) vs not yet (gray).
+      const coveredSet = new Set(p.covered);
       ctx.lineWidth = 1;
       for (let m = axisLo; m <= axisHi; m++) {
         const y = yFor(m);
@@ -106,6 +115,17 @@ export function PitchMeter({
           ctx.fillStyle = col.muted;
           ctx.font = "500 11px 'Inter Variable', system-ui";
           ctx.fillText(nm, 8, y + 4);
+        }
+        const isCovered = coveredSet.has(m);
+        ctx.fillStyle = isCovered ? col.coveredDot : col.uncoveredDot;
+        ctx.beginPath();
+        ctx.arc(COVERAGE_DOT_X, y, COVERAGE_DOT_R, 0, Math.PI * 2);
+        if (isCovered) {
+          ctx.fill();
+        } else {
+          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = col.uncoveredDot;
+          ctx.stroke();
         }
       }
 

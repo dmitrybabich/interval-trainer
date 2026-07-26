@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowDown, ArrowLeft, ArrowUp, Piano, RotateCcw, SkipForward, Volume2 } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, Piano, RotateCcw, Volume2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { PitchMeter } from "@/components/PitchMeter";
@@ -54,9 +54,6 @@ export function TrainerScreen({ ui, actions, theme, trailRef, onFrame }: Props) 
               {ui.direction === "down" ? <ArrowDown className="size-5" /> : <ArrowUp className="size-5" />}
             </Button>
           )}
-          <Button variant="ghost" size="icon" onClick={actions.skip} title={t("trainer.skip")} className="text-muted-foreground">
-            <SkipForward className="size-5" />
-          </Button>
           <Button variant="ghost" size="icon" onClick={() => void actions.buildExercise()} title={t("trainer.newExercise")} className="text-primary">
             <RotateCcw className="size-5" />
           </Button>
@@ -74,6 +71,7 @@ export function TrainerScreen({ ui, actions, theme, trailRef, onFrame }: Props) 
           tolCents={ui.tolCents}
           loMidi={ui.loMidi}
           hiMidi={ui.hiMidi}
+          covered={ui.covered}
           theme={theme}
           trailRef={trailRef}
           onFrame={onFrame}
@@ -127,13 +125,9 @@ export function TrainerScreen({ ui, actions, theme, trailRef, onFrame }: Props) 
           >
             {ui.status}
           </div>
-          <div className="mono text-[11px] text-muted-foreground">
-            {hitNotes >= totalNotes ? (
-              <span className="font-semibold text-[hsl(var(--good))]">{t("trainer.rangeCovered")}</span>
-            ) : (
-              t("trainer.rangeCoverage", { hit: hitNotes, total: totalNotes })
-            )}
-          </div>
+          {hitNotes >= totalNotes && (
+            <div className="mono text-[11px] font-semibold text-[hsl(var(--good))]">{t("trainer.rangeCovered")}</div>
+          )}
         </div>
       </div>
 
