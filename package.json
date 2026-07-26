@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "description": "Web-based vocal interval trainer — sing intervals, get real-time pitch feedback.",
+  "packageManager": "pnpm@11.7.0",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
