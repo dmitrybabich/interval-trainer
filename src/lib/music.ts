@@ -19,8 +19,27 @@ export function freqToMidiFloat(freq: number): number {
 
 export function midiToName(midi: number): string {
   const idx = ((midi % SEMITONES_PER_OCTAVE) + SEMITONES_PER_OCTAVE) % SEMITONES_PER_OCTAVE;
-  const octave = Math.floor(midi / SEMITONES_PER_OCTAVE) - 1;
+  const octave = midiToOctave(midi);
   return `${NOTE_NAMES[idx]}${octave}`;
+}
+
+// Scientific-pitch octave number for a MIDI note (C4 = middle C = octave 4).
+export function midiToOctave(midi: number): number {
+  return Math.floor(midi / SEMITONES_PER_OCTAVE) - 1;
+}
+
+// The [lo, hi] MIDI bounds of one octave, clamped to the singable range.
+// Returns null if that octave doesn't overlap the range at all.
+export function octaveBoundsWithin(
+  octave: number,
+  rangeLo: number,
+  rangeHi: number,
+): readonly [number, number] | null {
+  const octLo = (octave + 1) * SEMITONES_PER_OCTAVE; // C of this octave
+  const octHi = octLo + SEMITONES_PER_OCTAVE - 1; // B of this octave
+  const lo = Math.max(octLo, rangeLo);
+  const hi = Math.min(octHi, rangeHi);
+  return lo <= hi ? [lo, hi] : null;
 }
 
 export type VoiceRange = "low" | "mid" | "high";

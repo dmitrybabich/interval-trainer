@@ -256,6 +256,18 @@ export class AudioEngine {
   }
 
   /**
+   * "You found it" confirmation: play the target on piano the instant you first
+   * overlap it while seeking, and deafen the mic during playback so the speaker
+   * bleed isn't mis-scored. Short so it doesn't stall your hold.
+   */
+  playFoundNote(freq: number): void {
+    if (!this.audioCtx) return;
+    const dur = 0.7;
+    this.refNote(freq, this.audioCtx.currentTime + 0.02, dur, 0.5);
+    this.deafenUntil(0.02 + dur + 0.15);
+  }
+
+  /**
    * Easy-mode guide tone: quiet continuous synthetic drone at `freq`. Does NOT
    * deafen the mic — a loudness gate in the pitch loop separates voice from bleed.
    */

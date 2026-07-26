@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { A4, A4_MIDI, freqToMidiFloat, midiToFreq, midiToName, RANGE_BASE, rangeBounds } from "@/lib/music";
+import {
+  A4,
+  A4_MIDI,
+  freqToMidiFloat,
+  midiToFreq,
+  midiToName,
+  midiToOctave,
+  octaveBoundsWithin,
+  RANGE_BASE,
+  rangeBounds,
+} from "@/lib/music";
 
 describe("music helpers", () => {
   it("midiToFreq: A4 (midi 69) → 440 Hz", () => {
@@ -45,5 +55,26 @@ describe("music helpers", () => {
   it("rangeBounds prefers measured values over base defaults", () => {
     expect(rangeBounds(50, 70, 55)).toEqual([50, 70]);
     expect(rangeBounds(null, null, 55)).toEqual([48, 67]);
+  });
+
+  it("midiToOctave: scientific pitch octaves", () => {
+    expect(midiToOctave(60)).toBe(4); // C4 = middle C
+    expect(midiToOctave(48)).toBe(3); // C3
+    expect(midiToOctave(59)).toBe(3); // B3 (still octave 3)
+    expect(midiToOctave(72)).toBe(5); // C5
+  });
+
+  it("octaveBoundsWithin clamps an octave to the singable range", () => {
+    // Octave 3 is C3(48)–B3(59). Range 50–70 clips the low end.
+    expect(octaveBoundsWithin(3, 50, 70)).toEqual([50, 59]);
+    // Octave 4 is C4(60)–B4(71). Range 50–70 clips the high end.
+    expect(octaveBoundsWithin(4, 50, 70)).toEqual([60, 70]);
+    // Fully inside.
+    expect(octaveBoundsWithin(3, 40, 80)).toEqual([48, 59]);
+  });
+
+  it("octaveBoundsWithin returns null when the octave doesn't overlap the range", () => {
+    expect(octaveBoundsWithin(1, 50, 70)).toBeNull(); // octave 1 is far below
+    expect(octaveBoundsWithin(7, 50, 70)).toBeNull(); // octave 7 is far above
   });
 });

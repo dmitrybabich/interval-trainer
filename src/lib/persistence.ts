@@ -1,9 +1,11 @@
 import {
   DEFAULT_PREFS,
   DIR_OPTIONS,
+  FOUND_HINT_OPTIONS,
   GUIDE_OPTIONS,
   HOLD_OPTIONS,
   MODE_OPTIONS,
+  OCTAVE_MODE_OPTIONS,
   type Prefs,
   RANGE_OPTIONS,
   TOL_OPTIONS,
@@ -16,6 +18,8 @@ const VALID_VALUES: Record<keyof Prefs, readonly string[]> = {
   mode: MODE_OPTIONS.map((o) => o.value),
   direction: DIR_OPTIONS.map((o) => o.value),
   guide: GUIDE_OPTIONS.map((o) => o.value),
+  foundHint: FOUND_HINT_OPTIONS.map((o) => o.value),
+  octaveMode: OCTAVE_MODE_OPTIONS.map((o) => o.value),
 };
 
 // Two localStorage keys, both try/catch-guarded so private-mode failures are silent.

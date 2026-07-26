@@ -12,7 +12,7 @@ import {
   WRONG_NOTE_HINT_MS,
 } from "@/lib/constants";
 import { LEVELS } from "@/lib/levels";
-import { midiToFreq, midiToName, pick, randInt, rangeBounds } from "@/lib/music";
+import { midiToFreq, midiToName, midiToOctave, octaveBoundsWithin, pick, randInt, rangeBounds } from "@/lib/music";
 import { loadSavedRange, saveRange } from "@/lib/persistence";
 
 export type CueState = "listen" | "sing" | "next";
@@ -58,6 +58,8 @@ export interface TrainerConfig {
   mode: "guided" | "ear";
   direction: "up" | "down";
   guideTone: boolean;
+  foundHint: boolean;
+  octaveMode: boolean;
   rangeFallback: { base: number; lo: number; hi: number };
 }
 
@@ -69,6 +71,8 @@ interface SessionRefs {
   mode: "guided" | "ear";
   direction: "up" | "down";
   guideTone: boolean;
+  foundHint: boolean;
+  octaveMode: boolean;
   base: number;
   loMidi: number;
   hiMidi: number;
@@ -83,6 +87,9 @@ interface SessionRefs {
   wrongHold: number;
   covered: Set<number>;
   supportPlayed: boolean;
+  // Armed once you leave the target's tolerance; disarmed after the "found it"
+  // piano confirmation fires, so it plays once per seek rather than every frame.
+  foundArmed: boolean;
   droneTimer: number | null;
   nextTimer: number | null;
 }
@@ -95,6 +102,8 @@ function initSession(): SessionRefs {
     mode: DEFAULT_PREFS.mode,
     direction: DEFAULT_PREFS.direction,
     guideTone: false,
+    foundHint: true,
+    octaveMode: true,
     base: 55,
     loMidi: 48,
     hiMidi: 67,
@@ -109,9 +118,35 @@ function initSession(): SessionRefs {
     wrongHold: 0,
     covered: new Set(),
     supportPlayed: false,
+    foundArmed: true,
     droneTimer: null,
     nextTimer: null,
   };
+}
+
+// Within the valid start window [sLo, sHi], pick the octave to drill next: the
+// one with uncovered notes nearest the direction of travel (lowest first when
+// ascending, highest first when descending). Falls back to the nearest octave
+// once every octave is covered. Returns the octave's window clamped to [sLo, sHi].
+function pickActiveOctave(
+  sLo: number,
+  sHi: number,
+  covered: Set<number>,
+  dir: number,
+): readonly [number, number] | null {
+  const octaves: number[] = [];
+  for (let oct = midiToOctave(sLo); oct <= midiToOctave(sHi); oct++) octaves.push(oct);
+  const ordered = dir > 0 ? octaves : octaves.toReversed();
+  let fallback: readonly [number, number] | null = null;
+  for (const oct of ordered) {
+    const bounds = octaveBoundsWithin(oct, sLo, sHi);
+    if (!bounds) continue;
+    fallback ??= bounds;
+    for (let m = bounds[0]; m <= bounds[1]; m++) {
+      if (!covered.has(m)) return bounds; // first octave with an uncovered start
+    }
+  }
+  return fallback;
 }
 
 const CENTS_PER_SEMITONE = 100;
@@ -182,8 +217,20 @@ export function useTrainer(): {
     const [lo, hi] = rangeBounds(s.loMidi, s.hiMidi, s.base);
     const dir = s.direction === "down" ? -1 : 1;
     const maxSpan = lv.steps.reduce((sum, n) => sum + n, 0);
-    const sLo = dir > 0 ? lo : lo + maxSpan;
-    const sHi = dir > 0 ? hi - maxSpan : hi;
+    let sLo = dir > 0 ? lo : lo + maxSpan;
+    let sHi = dir > 0 ? hi - maxSpan : hi;
+
+    // Octave mode: confine the sweep to one octave at a time so the exercise
+    // stays in a small, coherent register. Pick the octave with uncovered start
+    // notes closest to the direction of travel (lowest first ascending, highest
+    // first descending); once it's fully covered, roll to the next.
+    if (s.octaveMode && sHi >= sLo) {
+      const active = pickActiveOctave(sLo, sHi, s.covered, dir);
+      if (active) {
+        sLo = active[0];
+        sHi = active[1];
+      }
+    }
 
     // Coverage-driven start selection: prefer notes you haven't sung yet.
     const uncovered: number[] = [];
@@ -210,6 +257,7 @@ export function useTrainer(): {
     s.anchorHold = 0;
     s.wrongHold = 0;
     s.anchorArmed = true;
+    s.foundArmed = true;
     s.trail = [];
 
     patchUi({
@@ -268,6 +316,7 @@ export function useTrainer(): {
       s.anchorHold = 0;
       s.wrongHold = 0;
       s.anchorArmed = true;
+      s.foundArmed = true; // re-arm for the next note in the sequence
       s.idx += 1;
 
       const done = s.idx >= s.targets.length;
@@ -351,6 +400,13 @@ export function useTrainer(): {
         liveNote = midiToName(Math.round(sungMidi));
 
         if (absC <= s.tolCents) {
+          // "Found it" confirmation: the first frame you overlap the target while
+          // seeking, play it on piano (mic deafened during playback). Fires once
+          // per seek — re-armed when you drift back off-target below.
+          if (s.foundHint && s.foundArmed) {
+            engine.playFoundNote(midiToFreq(target));
+            s.foundArmed = false;
+          }
           s.holding += dt;
           s.wrongHold = 0;
           const single = s.targets.length === 1;
@@ -378,6 +434,7 @@ export function useTrainer(): {
 
           if (s.holding >= need) advance(!single && !isFinal);
         } else {
+          s.foundArmed = true; // drifted off — re-arm the "found it" confirmation
           s.holding = Math.max(0, s.holding - dt * HOLD_DECAY_RATE);
           if (s.holding < s.holdMs / 2) s.supportPlayed = false;
           s.wrongHold += dt;
@@ -450,6 +507,8 @@ export function useTrainer(): {
       s.mode = config.mode;
       s.direction = config.direction;
       s.guideTone = config.guideTone;
+      s.foundHint = config.foundHint;
+      s.octaveMode = config.octaveMode;
       s.covered = new Set();
 
       // Use the saved range if we have one; otherwise fall back to the rough guess.
