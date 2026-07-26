@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Moon, Sun } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { SlidersHorizontal } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import { CalibrationScreen } from "@/components/screens/CalibrationScreen";
 import { SetupScreen } from "@/components/screens/SetupScreen";
@@ -14,29 +15,51 @@ import { useTrainer } from "@/hooks/useTrainer";
 import { RANGE_BASE } from "@/lib/music";
 import { loadSavedRange } from "@/lib/persistence";
 
-type Screen = "setup" | "calib" | "trainer";
-
 const RANGE_LOW_OFFSET = 7;
 const RANGE_HIGH_OFFSET = 12;
 
-export function App() {
-  const [screen, setScreen] = useState<Screen>("setup");
+function isTrainerPath(pathname: string): boolean {
+  return pathname.startsWith("/level/");
+}
+
+function AppInner() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [setupStatus, setSetupStatus] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [savedRange, setSavedRange] = useState(() => loadSavedRange());
+  // Gates the trainer route: only render it for a session we actually started.
+  // A cold deep-link / refresh has no live session (or mic gesture), so it
+  // redirects to setup instead of showing an empty meter.
+  const [sessionActive, setSessionActive] = useState(false);
+  const sessionActiveRef = useRef(false);
 
-  const { theme, toggle: toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { prefs, setPref } = usePrefs();
   const { ui, actions, bufTrail, onFrame, engine } = useTrainer();
-  const calib = useCalibration(engine, screen === "calib");
+  const onCalibScreen = location.pathname === "/calibrate";
+  const calib = useCalibration(engine, onCalibScreen);
 
   useEffect(() => {
     if (calib.ui.finishedRange) {
       setSavedRange(calib.ui.finishedRange);
-      const t = window.setTimeout(() => setScreen("setup"), 1100);
+      const t = window.setTimeout(() => navigate("/"), 1100);
       return () => clearTimeout(t);
     }
-  }, [calib.ui.finishedRange]);
+  }, [calib.ui.finishedRange, navigate]);
+
+  // Tear the session down whenever we leave the trainer route — covers the
+  // Back button and the browser's back/forward alike, in one place.
+  useEffect(() => {
+    if (!isTrainerPath(location.pathname) && sessionActiveRef.current) {
+      actions.leaveTrainer();
+      actions.reloadRangeFromStorage();
+      setSavedRange(loadSavedRange());
+      sessionActiveRef.current = false;
+      setSessionActive(false);
+    }
+  }, [location.pathname, actions]);
 
   const beginLevel = useCallback(
     async (levelIdx: number) => {
@@ -54,11 +77,15 @@ export function App() {
         mode: prefs.mode,
         direction: prefs.direction,
         guideTone: prefs.guide === "on",
+        foundHint: prefs.foundHint === "on",
+        octaveMode: prefs.octaveMode === "on",
         rangeFallback,
       });
-      setScreen("trainer");
+      sessionActiveRef.current = true;
+      setSessionActive(true);
+      navigate(`/level/${levelIdx}`);
     },
-    [actions, prefs],
+    [actions, prefs, navigate],
   );
 
   const beginCalibration = useCallback(async () => {
@@ -66,20 +93,16 @@ export function App() {
     const ok = await actions.requestMic((msg) => setSetupStatus(msg));
     if (!ok) return;
     setSetupStatus("");
-    setScreen("calib");
-  }, [actions]);
+    navigate("/calibrate");
+  }, [actions, navigate]);
 
-  const leaveTrainer = useCallback(() => {
-    actions.leaveTrainer();
-    actions.reloadRangeFromStorage();
-    setSavedRange(loadSavedRange());
-    setScreen("setup");
-    setSetupStatus("");
-  }, [actions]);
+  // Leaving the trainer is just navigation — the pathname effect above does the
+  // actual teardown, so the button and the browser back button behave the same.
+  const leaveTrainer = useCallback(() => navigate("/"), [navigate]);
 
   // Spacebar = replay hint (never leaks by-ear targets — playHint is always note 1).
   useEffect(() => {
-    if (screen !== "trainer") return;
+    if (!isTrainerPath(location.pathname)) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.code !== "Space") return;
       const t = e.target as HTMLElement | null;
@@ -89,7 +112,7 @@ export function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [screen, actions]);
+  }, [location.pathname, actions]);
 
   const trainerActions = { ...actions, leaveTrainer };
 
@@ -103,49 +126,52 @@ export function App() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={toggleTheme}
+          onClick={() => setSettingsOpen(true)}
           className="rounded-full text-muted-foreground"
-          title={theme === "dark" ? "Switch to light" : "Switch to dark"}
+          title="Settings"
         >
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.span
-              key={theme}
-              initial={{ opacity: 0, rotate: -30, scale: 0.7 }}
-              animate={{ opacity: 1, rotate: 0, scale: 1 }}
-              exit={{ opacity: 0, rotate: 30, scale: 0.7 }}
-              transition={{ duration: 0.18 }}
-            >
-              {theme === "dark" ? <Moon className="size-5" /> : <Sun className="size-5" />}
-            </motion.span>
-          </AnimatePresence>
+          <SlidersHorizontal className="size-5" />
         </Button>
       </header>
 
       <main className="w-full flex-1 px-4 pb-6 pt-2">
         <AnimatePresence mode="wait">
           <motion.div
-            key={screen}
+            key={location.pathname}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
           >
-            {screen === "setup" && (
-              <SetupScreen
-                prefs={prefs}
-                savedRange={savedRange}
-                onStartLevel={(i) => void beginLevel(i)}
-                onCalibrate={() => void beginCalibration()}
-                onOpenSettings={() => setSettingsOpen(true)}
-                status={setupStatus}
+            <Routes location={location}>
+              <Route
+                path="/"
+                element={
+                  <SetupScreen
+                    prefs={prefs}
+                    savedRange={savedRange}
+                    onStartLevel={(i) => void beginLevel(i)}
+                    onCalibrate={() => void beginCalibration()}
+                    status={setupStatus}
+                  />
+                }
               />
-            )}
-            {screen === "calib" && (
-              <CalibrationScreen ui={calib.ui} onCapture={calib.capture} onBack={() => setScreen("setup")} />
-            )}
-            {screen === "trainer" && (
-              <TrainerScreen ui={ui} actions={trainerActions} theme={theme} trailRef={bufTrail} onFrame={onFrame} />
-            )}
+              <Route
+                path="/calibrate"
+                element={<CalibrationScreen ui={calib.ui} onCapture={calib.capture} onBack={() => navigate("/")} />}
+              />
+              <Route
+                path="/level/:idx"
+                element={
+                  sessionActive ? (
+                    <TrainerScreen ui={ui} actions={trainerActions} theme={theme} trailRef={bufTrail} onFrame={onFrame} />
+                  ) : (
+                    <Navigate to="/" replace />
+                  )
+                }
+              />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
           </motion.div>
         </AnimatePresence>
       </main>
@@ -161,7 +187,27 @@ export function App() {
         </a>
       </footer>
 
-      <SettingsSheet open={settingsOpen} onOpenChange={setSettingsOpen} prefs={prefs} setPref={setPref} />
+      <SettingsSheet
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        prefs={prefs}
+        setPref={setPref}
+        theme={theme}
+        onThemeChange={setTheme}
+        savedRange={savedRange}
+        onCalibrate={() => {
+          setSettingsOpen(false);
+          void beginCalibration();
+        }}
+      />
     </div>
+  );
+}
+
+export function App() {
+  return (
+    <HashRouter>
+      <AppInner />
+    </HashRouter>
   );
 }
