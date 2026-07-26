@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Standard shadcn slate palette + our two extras (good, near). */
+    --background: 222 47% 8%;
+    --foreground: 210 40% 96%;
+    --card: 224 40% 14%;
+    --card-foreground: 210 40% 96%;
+    --popover: 224 40% 14%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 217 100% 71%;
+    --primary-foreground: 222 47% 8%;
+    --secondary: 220 20% 22%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 220 20% 22%;
+    --muted-foreground: 220 15% 65%;
+    --accent: 220 20% 22%;
+    --accent-foreground: 210 40% 96%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 210 40% 96%;
+    --border: 224 25% 24%;
+    --input: 224 25% 24%;
+    --ring: 217 100% 71%;
+    --good: 145 66% 52%;
+    --near: 42 89% 64%;
+    --radius: 0.75rem;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    background: radial-gradient(1200px 600px at 50% -10%, hsl(230 42% 18%), hsl(var(--background)));
+    font-family:
+      -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  .mono {
+    font-variant-numeric: tabular-nums;
+  }
+}

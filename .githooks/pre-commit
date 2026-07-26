@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Zero-tolerance pre-commit gate: typecheck, lint, tests. Any failure aborts.
+# Enable once with: git config core.hooksPath .githooks
+set -euo pipefail
+
+echo "→ typecheck"
+pnpm typecheck
+
+echo "→ lint (--max-warnings 0)"
+pnpm exec eslint src --max-warnings 0
+
+echo "→ tests"
+pnpm test:run
+
+echo "✓ pre-commit passed"
