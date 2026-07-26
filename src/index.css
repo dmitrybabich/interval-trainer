@@ -1,32 +1,71 @@
+@import "@fontsource-variable/inter";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/*
+  Warm "calm studio" palette. Neutrals are warm (a touch of yellow/red in the
+  grays), the accent is a muted terracotta, and the pitch-training semantics are
+  a calm sage (on pitch) and soft amber (near). Both light and dark are tuned to
+  feel like a quiet practice room, not a dashboard.
+  All values are HSL channels consumed as `hsl(var(--x))` by Tailwind + canvas.
+*/
 @layer base {
   :root {
-    /* Standard shadcn slate palette + our two extras (good, near). */
-    --background: 222 47% 8%;
-    --foreground: 210 40% 96%;
-    --card: 224 40% 14%;
-    --card-foreground: 210 40% 96%;
-    --popover: 224 40% 14%;
-    --popover-foreground: 210 40% 96%;
-    --primary: 217 100% 71%;
-    --primary-foreground: 222 47% 8%;
-    --secondary: 220 20% 22%;
-    --secondary-foreground: 210 40% 96%;
-    --muted: 220 20% 22%;
-    --muted-foreground: 220 15% 65%;
-    --accent: 220 20% 22%;
-    --accent-foreground: 210 40% 96%;
-    --destructive: 0 62% 50%;
-    --destructive-foreground: 210 40% 96%;
-    --border: 224 25% 24%;
-    --input: 224 25% 24%;
-    --ring: 217 100% 71%;
-    --good: 145 66% 52%;
-    --near: 42 89% 64%;
-    --radius: 0.75rem;
+    --background: 40 30% 96%; /* warm bone / paper */
+    --foreground: 30 12% 18%; /* warm charcoal */
+    --card: 40 33% 98%;
+    --card-foreground: 30 12% 18%;
+    --popover: 40 33% 98%;
+    --popover-foreground: 30 12% 18%;
+    --primary: 16 55% 52%; /* terracotta */
+    --primary-foreground: 40 40% 97%;
+    --secondary: 36 22% 90%;
+    --secondary-foreground: 30 12% 24%;
+    --muted: 36 20% 91%;
+    --muted-foreground: 32 8% 45%;
+    --accent: 36 24% 88%;
+    --accent-foreground: 30 12% 20%;
+    --destructive: 8 62% 48%;
+    --destructive-foreground: 40 40% 97%;
+    --border: 34 18% 85%;
+    --input: 34 18% 85%;
+    --ring: 16 55% 52%;
+    --good: 145 40% 42%; /* calm sage */
+    --near: 36 70% 52%; /* soft amber */
+    --radius: 1rem;
+
+    /* Canvas meter surface + grid — warm, subtle. */
+    --meter-surface: 38 26% 93%;
+    --meter-grid: 34 16% 80%;
+  }
+
+  .dark {
+    --background: 28 12% 10%; /* warm near-black */
+    --foreground: 38 25% 90%;
+    --card: 28 11% 14%;
+    --card-foreground: 38 25% 90%;
+    --popover: 28 11% 14%;
+    --popover-foreground: 38 25% 90%;
+    --primary: 16 62% 58%; /* terracotta, a touch brighter for dark */
+    --primary-foreground: 28 15% 10%;
+    --secondary: 28 9% 20%;
+    --secondary-foreground: 38 25% 90%;
+    --muted: 28 9% 19%;
+    --muted-foreground: 34 10% 60%;
+    --accent: 28 9% 22%;
+    --accent-foreground: 38 25% 92%;
+    --destructive: 8 55% 52%;
+    --destructive-foreground: 38 25% 92%;
+    --border: 28 9% 24%;
+    --input: 28 9% 24%;
+    --ring: 16 62% 58%;
+    --good: 145 42% 52%;
+    --near: 38 78% 60%;
+
+    --meter-surface: 28 11% 13%;
+    --meter-grid: 28 8% 26%;
   }
 
   html,
@@ -36,11 +75,21 @@
   }
 
   body {
-    @apply bg-background text-foreground;
-    background: radial-gradient(1200px 600px at 50% -10%, hsl(230 42% 18%), hsl(var(--background)));
-    font-family:
-      -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    @apply bg-background text-foreground antialiased;
+    font-family: "Inter Variable", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     font-variant-numeric: tabular-nums;
+    /* very soft warm vignette — barely there, adds depth without color noise */
+    background-image: radial-gradient(1200px 700px at 50% -15%, hsl(var(--card)), hsl(var(--background)));
+    background-attachment: fixed;
+  }
+
+  /* Smooth theme cross-fade. */
+  body,
+  .theme-fade {
+    transition:
+      background-color 0.3s ease,
+      color 0.3s ease,
+      border-color 0.3s ease;
   }
 }
 

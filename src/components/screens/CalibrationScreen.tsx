@@ -22,21 +22,21 @@ interface Props {
 
 export function CalibrationScreen({ ui, onCapture, onBack }: Props) {
   return (
-    <div className="mx-auto w-full max-w-2xl">
-      <Card>
-        <CardContent className="pt-6">
-          <div className="mb-2 flex items-center justify-between">
-            <Button variant="ghost" size="sm" onClick={onBack} className="gap-1.5">
+    <div className="mx-auto w-full max-w-xl">
+      <Card className="rounded-3xl">
+        <CardContent className="p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <Button variant="ghost" size="sm" onClick={onBack} className="gap-1.5 text-muted-foreground">
               <ArrowLeft className="size-4" /> Back
             </Button>
-            <div className="mono text-sm text-muted-foreground">Set your vocal range</div>
-            <Button variant="ghost" size="sm" onClick={onBack}>
+            <div className="text-sm font-semibold">Set your vocal range</div>
+            <Button variant="ghost" size="sm" onClick={onBack} className="text-muted-foreground">
               Cancel
             </Button>
           </div>
 
-          <div className="text-center text-[42px] font-extrabold tracking-wider">{ui.liveNote}</div>
-          <div className="mono min-h-[18px] text-center text-xs text-muted-foreground">{ui.hint}</div>
+          <div className="mt-4 text-center text-6xl font-extrabold tracking-tight">{ui.liveNote}</div>
+          <div className="mt-3 min-h-[36px] text-balance text-center text-sm text-muted-foreground">{ui.hint}</div>
 
           <div className="my-3 flex justify-center">
             <motion.div
@@ -46,16 +46,16 @@ export function CalibrationScreen({ ui, onCapture, onBack }: Props) {
               }
               className={cn(
                 "flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-semibold",
-                ui.cue === "capturing" && "border-[hsl(var(--good))] bg-[hsl(var(--good))] text-[hsl(var(--background))]",
-                ui.cue === "ready" && "border-primary text-primary",
+                ui.cue === "capturing" && "border-[hsl(var(--good))] bg-[hsl(var(--good))] text-white",
+                ui.cue === "ready" && "border-primary/50 text-primary",
               )}
             >
               {ui.cue === "capturing" ? "🎤 Hold it steady…" : "Sing, then press capture"}
             </motion.div>
           </div>
 
-          <div className="mt-3 flex justify-center">
-            <Button onClick={onCapture} disabled={ui.capturing}>
+          <div className="mt-5 flex justify-center">
+            <Button onClick={onCapture} disabled={ui.capturing} size="lg" className="rounded-xl">
               {ui.actionLabel}
             </Button>
           </div>

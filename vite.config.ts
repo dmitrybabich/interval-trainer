@@ -16,8 +16,8 @@ export default defineConfig({
         name: "Interval Trainer",
         short_name: "Intervals",
         description: "Vocal interval trainer — sing intervals, get real-time pitch feedback.",
-        theme_color: "#0f1220",
-        background_color: "#0f1220",
+        theme_color: "#1a1613",
+        background_color: "#1a1613",
         display: "standalone",
         orientation: "portrait",
         // scope/start_url resolve against `base`, so they land under /interval-trainer/.

@@ -1,6 +1,6 @@
 import { PitchDetector } from "pitchy";
 
-import type { PitchSample, SoundBadgeState, SoundfontInstrument } from "@/audio/types";
+import type { PitchSample, SoundfontInstrument } from "@/audio/types";
 import {
   CLARITY_THRESHOLD,
   DRONE_VOICE_RMS,
@@ -37,8 +37,6 @@ export class AudioEngine {
   // AudioContext.currentTime at which we stop ignoring the mic (the app is playing
   // through the speakers). Ports the muteUntil field on the old S god-object.
   private muteUntil = 0;
-
-  onBadgeChange: ((state: SoundBadgeState) => void) | null = null;
 
   isReady(): boolean {
     return this.analyser !== null && this.audioCtx !== null;
@@ -114,16 +112,13 @@ export class AudioEngine {
   async loadPiano(): Promise<void> {
     if (this.piano || this.pianoLoading || !this.audioCtx) return;
     this.pianoLoading = true;
-    this.onBadgeChange?.("loading");
     try {
       const Soundfont = (await import("soundfont-player")).default;
       this.piano = await Soundfont.instrument(this.audioCtx, "acoustic_grand_piano", {
         soundfont: "MusyngKite",
       });
-      this.onBadgeChange?.("real");
     } catch {
       this.piano = null; // stay on the synth
-      this.onBadgeChange?.("synth");
     } finally {
       this.pianoLoading = false;
     }

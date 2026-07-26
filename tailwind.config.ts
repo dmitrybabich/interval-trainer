@@ -50,6 +50,11 @@ const config: Config = {
         // Semantic tokens for pitch-training states — used by canvas + chrome.
         good: "hsl(var(--good))",
         near: "hsl(var(--near))",
+        "meter-surface": "hsl(var(--meter-surface))",
+        "meter-grid": "hsl(var(--meter-grid))",
+      },
+      fontFamily: {
+        sans: ['"Inter Variable"', "-apple-system", "BlinkMacSystemFont", "system-ui", "sans-serif"],
       },
       borderRadius: {
         lg: "var(--radius)",

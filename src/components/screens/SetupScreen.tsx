@@ -1,121 +1,127 @@
- 
 import { motion } from "framer-motion";
-import { Play } from "lucide-react";
+import { SlidersHorizontal, Sparkles } from "lucide-react";
 
-import type { SoundBadgeState } from "@/audio/types";
-import { SoundBadge } from "@/components/SoundBadge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  DIR_OPTIONS,
-  GUIDE_OPTIONS,
-  HOLD_OPTIONS,
-  MODE_OPTIONS,
-  type Prefs,
-  RANGE_OPTIONS,
-  TOL_OPTIONS,
-} from "@/lib/constants";
+import type { Prefs } from "@/lib/constants";
+import { MODE_OPTIONS } from "@/lib/constants";
 import { LEVELS } from "@/lib/levels";
 import { midiToName } from "@/lib/music";
 
 interface Props {
   prefs: Prefs;
-  setPref: <K extends keyof Prefs>(key: K, value: Prefs[K]) => void;
   savedRange: { lo: number; hi: number } | null;
-  soundBadge: SoundBadgeState;
   onStartLevel: (idx: number) => void;
   onCalibrate: () => void;
+  onOpenSettings: () => void;
   status: string;
 }
 
-// Individual select field — DRY the label + Radix wiring.
-function SelectField<V extends string>({
-  label,
-  value,
-  options,
-  onValueChange,
-}: {
-  label: string;
-  value: V;
-  options: readonly { readonly value: V; readonly label: string }[];
-  onValueChange: (v: V) => void;
-}) {
+// The little dot-diagram that shows an interval's shape at a glance.
+function IntervalGlyph({ steps, direction }: { steps: readonly number[]; direction: "up" | "down" }) {
+  if (steps.length === 0) {
+    return <span className="inline-block size-2.5 rounded-full bg-primary" />;
+  }
+  const dir = direction === "down" ? -1 : 1;
+  const levels = [0];
+  for (const s of steps) levels.push((levels.at(-1) ?? 0) + dir * s);
+  const min = Math.min(...levels);
+  const max = Math.max(...levels);
+  const span = Math.max(1, max - min);
+  const height = 26;
+  const step = 16;
+  const width = 12 + (levels.length - 1) * step;
+  const yOf = (lv: number) => height - 4 - ((lv - min) / span) * (height - 10);
   return (
-    <div className="flex flex-col gap-1.5">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
-      <Select value={value} onValueChange={(v) => onValueChange(v as V)}>
-        <SelectTrigger className="min-w-[180px]">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {options.map((o) => (
-            <SelectItem key={o.value} value={o.value}>
-              {o.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+      {levels.map((lv, i) => {
+        const x = 6 + i * step;
+        const y = yOf(lv);
+        const prev = levels[i - 1];
+        return (
+          <g key={i}>
+            {prev !== undefined && (
+              <line x1={6 + (i - 1) * step} y1={yOf(prev)} x2={x} y2={y} stroke="hsl(var(--primary))" strokeWidth="1.5" opacity="0.5" />
+            )}
+            <circle cx={x} cy={y} r="3.5" fill="hsl(var(--primary))" />
+          </g>
+        );
+      })}
+    </svg>
   );
 }
 
-export function SetupScreen({ prefs, setPref, savedRange, soundBadge, onStartLevel, onCalibrate, status }: Props) {
+export function SetupScreen({
+  prefs,
+  savedRange,
+  onStartLevel,
+  onCalibrate,
+  onOpenSettings,
+  status,
+}: Props) {
+  const modeLabel = MODE_OPTIONS.find((o) => o.value === prefs.mode)?.label.split(" ")[0] ?? prefs.mode;
+
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-3">
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-wrap items-end gap-3">
-            <SelectField label="Voice range" value={prefs.range} options={RANGE_OPTIONS} onValueChange={(v) => setPref("range", v)} />
-            <SelectField label="Precision" value={prefs.tol} options={TOL_OPTIONS} onValueChange={(v) => setPref("tol", v)} />
-            <SelectField label="Hold to confirm" value={prefs.hold} options={HOLD_OPTIONS} onValueChange={(v) => setPref("hold", v)} />
-            <SelectField label="Mode" value={prefs.mode} options={MODE_OPTIONS} onValueChange={(v) => setPref("mode", v)} />
-            <SelectField label="Direction" value={prefs.direction} options={DIR_OPTIONS} onValueChange={(v) => setPref("direction", v)} />
-            <SelectField label="Guide tone" value={prefs.guide} options={GUIDE_OPTIONS} onValueChange={(v) => setPref("guide", v)} />
-          </div>
-
-          <div className="mt-4 flex items-center justify-between rounded-lg border bg-card p-3">
-            <div>
-              <div className="text-xs text-muted-foreground">Your vocal range</div>
-              <div className="mt-0.5 font-semibold">
-                {savedRange ? `${midiToName(savedRange.lo)} – ${midiToName(savedRange.hi)}` : "Not set yet — using a rough guess"}
-              </div>
+    <div className="mx-auto flex w-full max-w-xl flex-col gap-5">
+      {/* Toolbar: range + settings, compact and quiet. */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onCalibrate}
+          className="theme-fade group flex flex-1 items-center justify-between rounded-2xl border bg-card px-4 py-3 text-left transition-colors hover:border-primary/60"
+        >
+          <div>
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Your range</div>
+            <div className="mt-0.5 font-semibold">
+              {savedRange ? `${midiToName(savedRange.lo)} – ${midiToName(savedRange.hi)}` : "Tap to calibrate"}
             </div>
-            <Button variant="outline" onClick={onCalibrate}>
-              🎚️ Set / update range
-            </Button>
           </div>
+          <Sparkles className="size-4 text-muted-foreground transition-colors group-hover:text-primary" />
+        </button>
+        <Button variant="outline" size="icon" onClick={onOpenSettings} className="size-[58px] rounded-2xl" title="Settings">
+          <SlidersHorizontal className="size-5" />
+        </Button>
+      </div>
 
-          <div className="mt-4 flex items-center justify-between">
-            <div className="text-xs text-muted-foreground">Pick a level to start</div>
-            <SoundBadge state={soundBadge} />
-          </div>
+      {/* Section heading */}
+      <div className="px-1">
+        <h2 className="text-lg font-semibold">Choose an interval</h2>
+        <p className="text-sm text-muted-foreground">
+          {modeLabel} · {prefs.direction === "down" ? "descending" : "ascending"}
+          {prefs.guide === "on" ? " · guide tone" : ""}
+        </p>
+      </div>
 
-          <div className="mt-2 flex flex-col gap-2">
-            {LEVELS.map((lv, i) => (
-              <motion.button
-                key={lv.name}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.03 }}
-                whileHover={{ scale: 1.003 }}
-                whileTap={{ scale: 0.995 }}
-                onClick={() => onStartLevel(i)}
-                className="flex items-center gap-3 rounded-xl border bg-card p-4 text-left transition-colors hover:border-primary"
-              >
-                <div className="flex-1">
-                  <div className="font-semibold">{lv.name}</div>
-                  <div className="mt-0.5 text-xs text-muted-foreground">{lv.desc}</div>
-                </div>
-                <Play className="size-5 text-primary" />
-              </motion.button>
-            ))}
-          </div>
+      {/* Levels as the hero — a clean list of interval cards. */}
+      <div className="flex flex-col gap-2.5">
+        {LEVELS.map((lv, i) => {
+          const [num, ...rest] = lv.name.split(" · ");
+          const title = rest.join(" · ");
+          return (
+            <motion.button
+              key={lv.name}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.035, type: "spring", stiffness: 320, damping: 30 }}
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.99 }}
+              onClick={() => onStartLevel(i)}
+              className="theme-fade group flex items-center gap-4 rounded-2xl border bg-card p-4 text-left shadow-sm transition-colors hover:border-primary/60"
+            >
+              <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-muted text-sm font-bold text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
+                {num}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-semibold">{title}</div>
+                <div className="truncate text-xs text-muted-foreground">{lv.desc}</div>
+              </div>
+              <div className="hidden shrink-0 sm:block">
+                <IntervalGlyph steps={lv.steps} direction={prefs.direction} />
+              </div>
+            </motion.button>
+          );
+        })}
+      </div>
 
-          {status && <div className="mt-3 text-center text-sm text-[hsl(var(--near))]">{status}</div>}
-        </CardContent>
-      </Card>
+      {status && <div className="text-center text-sm text-[hsl(var(--near))]">{status}</div>}
     </div>
   );
 }

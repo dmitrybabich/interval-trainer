@@ -3,8 +3,6 @@ export interface SoundfontInstrument {
   play(midi: number, when?: number, opts?: { duration?: number; gain?: number }): void;
 }
 
-export type SoundBadgeState = "loading" | "real" | "synth";
-
 export interface PitchSample {
   // Fractional MIDI (null when not singing / muted / low-clarity).
   midi: number | null;

@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AudioEngine } from "@/audio/AudioEngine";
-import type { SoundBadgeState } from "@/audio/types";
 import {
   ANCHOR_HOLD_MS,
   DEFAULT_PREFS,
@@ -32,7 +31,6 @@ export interface UiSnapshot {
   loMidi: number;
   hiMidi: number;
   tolCents: number;
-  badge: SoundBadgeState;
   running: boolean;
   flashKey: number;
   direction: "up" | "down";
@@ -159,7 +157,6 @@ export function useTrainer(): {
     loMidi: 48,
     hiMidi: 67,
     tolCents: 50,
-    badge: "synth",
     running: false,
     flashKey: 0,
     direction: DEFAULT_PREFS.direction,
@@ -172,13 +169,6 @@ export function useTrainer(): {
   const patchUi = useCallback((patch: Partial<UiSnapshot>) => {
     setUi((prev) => ({ ...prev, ...patch }));
   }, []);
-
-  useEffect(() => {
-    engine.onBadgeChange = (badge) => patchUi({ badge });
-    return () => {
-      engine.onBadgeChange = null;
-    };
-  }, [engine, patchUi]);
 
   // ---------- exercise generation ----------
 
