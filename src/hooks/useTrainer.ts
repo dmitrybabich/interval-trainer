@@ -46,7 +46,6 @@ export interface TrainerActions {
   replayAll(): void;
   playStartNote(): void;
   playHint(): void;
-  skip(): void;
   toggleMode(): void;
   toggleDirection(): void;
   requestMic(onDenied: (msg: string) => void): Promise<boolean>;
@@ -404,7 +403,10 @@ export function useTrainer(): {
           // "Found it" confirmation: the first frame you overlap the target while
           // seeking, play it on piano (mic deafened during playback). Fires once
           // per seek — re-armed when you drift back off-target below.
-          if (s.foundHint && s.foundArmed) {
+          // In ear mode we only confirm the FIRST note; chiming later notes would
+          // reveal the by-ear answer the instant you stumble onto it.
+          const mayChime = s.mode !== "ear" || s.idx === 0;
+          if (s.foundHint && s.foundArmed && mayChime) {
             engine.playFoundNote(midiToFreq(target));
             s.foundArmed = false;
           }
@@ -575,22 +577,6 @@ export function useTrainer(): {
     if (first !== undefined) engine.playHint(midiToFreq(first));
   }, [engine]);
 
-  const skip = useCallback(() => {
-    const s = S.current;
-    s.holding = 0;
-    s.supportPlayed = false;
-    engine.stopDrone();
-    s.idx += 1;
-    const next = s.targets[s.idx];
-    const done = s.idx >= s.targets.length;
-    patchUi({
-      idx: s.idx,
-      hasDrone: false,
-      status: done ? i18n.t("status.done") : next !== undefined ? i18n.t("status.sing", { note: midiToName(next) }) : ui.status,
-      statusVariant: done ? "good" : "",
-    });
-  }, [engine, patchUi, ui.status]);
-
   const toggleMode = useCallback(() => {
     const s = S.current;
     s.mode = s.mode === "ear" ? "guided" : "ear";
@@ -666,7 +652,6 @@ export function useTrainer(): {
       replayAll,
       playStartNote,
       playHint,
-      skip,
       toggleMode,
       toggleDirection,
       requestMic,
