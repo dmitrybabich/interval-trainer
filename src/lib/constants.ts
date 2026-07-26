@@ -28,8 +28,9 @@ export const ANCHOR_HOLD_MS = 180;
 // Length of the sung-pitch trail on the canvas meter.
 export const TRAIL_LENGTH = 240;
 
-// Semitones shown above/below the target on the meter (1 octave window).
-export const METER_SPAN_SEMITONES = 8;
+// Semitones of headroom above/below your vocal range on the meter, so the
+// top and bottom notes aren't jammed against the canvas edge.
+export const METER_RANGE_PAD = 1;
 
 // FFT size for the analyser — matches the pitchy buffer.
 export const FFT_SIZE = 2048;
@@ -67,8 +68,8 @@ export const HOLD_OPTIONS = [
 ] as const satisfies readonly Option<"350" | "600" | "1000" | "2000" | "3000" | "4000">[];
 
 export const MODE_OPTIONS = [
-  { value: "guided", label: "Guided (show every target)" },
-  { value: "ear", label: "Ear (only give the start note)" },
+  { value: "guided", label: "Guided" },
+  { value: "ear", label: "Ear" },
 ] as const satisfies readonly Option<"guided" | "ear">[];
 
 export const DIR_OPTIONS = [
@@ -78,8 +79,23 @@ export const DIR_OPTIONS = [
 
 export const GUIDE_OPTIONS = [
   { value: "off", label: "Off" },
-  { value: "on", label: "Easy — drone on note 1" },
+  { value: "on", label: "On" },
 ] as const satisfies readonly Option<"off" | "on">[];
+
+export const FOUND_HINT_OPTIONS = [
+  { value: "on", label: "On" },
+  { value: "off", label: "Off" },
+] as const satisfies readonly Option<"on" | "off">[];
+
+export const OCTAVE_MODE_OPTIONS = [
+  { value: "on", label: "One octave" },
+  { value: "off", label: "Full range" },
+] as const satisfies readonly Option<"on" | "off">[];
+
+export const THEME_OPTIONS = [
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+] as const satisfies readonly Option<"light" | "dark">[];
 
 export type RangeVal = (typeof RANGE_OPTIONS)[number]["value"];
 export type TolVal = (typeof TOL_OPTIONS)[number]["value"];
@@ -87,6 +103,8 @@ export type HoldVal = (typeof HOLD_OPTIONS)[number]["value"];
 export type ModeVal = (typeof MODE_OPTIONS)[number]["value"];
 export type DirVal = (typeof DIR_OPTIONS)[number]["value"];
 export type GuideVal = (typeof GUIDE_OPTIONS)[number]["value"];
+export type FoundHintVal = (typeof FOUND_HINT_OPTIONS)[number]["value"];
+export type OctaveModeVal = (typeof OCTAVE_MODE_OPTIONS)[number]["value"];
 
 export interface Prefs {
   range: RangeVal;
@@ -95,6 +113,8 @@ export interface Prefs {
   mode: ModeVal;
   direction: DirVal;
   guide: GuideVal;
+  foundHint: FoundHintVal;
+  octaveMode: OctaveModeVal;
 }
 
 export const DEFAULT_PREFS: Prefs = {
@@ -104,4 +124,6 @@ export const DEFAULT_PREFS: Prefs = {
   mode: "guided",
   direction: "up",
   guide: "off",
+  foundHint: "on",
+  octaveMode: "on",
 };

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-import { METER_SPAN_SEMITONES, TRAIL_LENGTH } from "@/lib/constants";
+import { METER_RANGE_PAD, TRAIL_LENGTH } from "@/lib/constants";
 import { midiToName } from "@/lib/music";
 
 interface Props {
@@ -10,7 +10,8 @@ interface Props {
   currentIdx: number;
   done: boolean;
   tolCents: number;
-  base: number;
+  loMidi: number;
+  hiMidi: number;
   theme: "light" | "dark";
   trailRef: () => readonly (number | null)[];
   onFrame: (cb: (dt: number) => void) => () => void;
@@ -40,14 +41,15 @@ export function PitchMeter({
   currentIdx,
   done,
   tolCents,
-  base,
+  loMidi,
+  hiMidi,
   theme,
   trailRef,
   onFrame,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const propsRef = useRef({ sungMidi, target, targets, currentIdx, done, tolCents, base });
-  propsRef.current = { sungMidi, target, targets, currentIdx, done, tolCents, base };
+  const propsRef = useRef({ sungMidi, target, targets, currentIdx, done, tolCents, loMidi, hiMidi });
+  propsRef.current = { sungMidi, target, targets, currentIdx, done, tolCents, loMidi, hiMidi };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -80,13 +82,17 @@ export function PitchMeter({
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
 
-      const center = p.done ? p.base : (p.target ?? p.base);
-      const span = METER_SPAN_SEMITONES;
-      const yFor = (m: number) => h - ((m - (center - span)) / (2 * span)) * h;
+      // Fixed axis over the whole vocal range (with a little padding), so every
+      // note sits at a stable spot and you can see the full range at once —
+      // rather than a window that scrolls to follow the current target.
+      const axisLo = p.loMidi - METER_RANGE_PAD;
+      const axisHi = p.hiMidi + METER_RANGE_PAD;
+      const axisSpan = Math.max(1, axisHi - axisLo);
+      const yFor = (m: number) => h - ((m - axisLo) / axisSpan) * h;
 
       // Semitone gridlines; label naturals on the left.
       ctx.lineWidth = 1;
-      for (let m = Math.ceil(center - span); m <= center + span; m++) {
+      for (let m = axisLo; m <= axisHi; m++) {
         const y = yFor(m);
         ctx.strokeStyle = col.grid;
         ctx.globalAlpha = m % 12 === 0 ? 0.9 : 0.4;

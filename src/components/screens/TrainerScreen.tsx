@@ -1,7 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, Ear, Eye, Piano, RotateCcw, SkipForward, Volume2 } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, Piano, RotateCcw, SkipForward, Volume2 } from "lucide-react";
 
-import { CoverageMap } from "@/components/CoverageMap";
 import { PitchMeter } from "@/components/PitchMeter";
 import { SequenceDots } from "@/components/SequenceDots";
 import { Button } from "@/components/ui/button";
@@ -22,19 +21,47 @@ export function TrainerScreen({ ui, actions, theme, trailRef, onFrame }: Props) 
   const target = ui.targets[ui.idx];
   const isSingleNote = LEVELS[ui.levelIdx]?.steps.length === 0;
   const levelTitle = LEVELS[ui.levelIdx]?.name.split(" · ").slice(1).join(" · ") ?? "";
+  const coveredSet = new Set(ui.covered);
+  const totalNotes = ui.hiMidi - ui.loMidi + 1;
+  const hitNotes = [...coveredSet].filter((m) => m >= ui.loMidi && m <= ui.hiMidi).length;
 
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
-      {/* Header row: back + level title */}
+    <div className="mx-auto flex h-[calc(100dvh-7.5rem)] min-h-[440px] w-full max-w-xl flex-col gap-2">
+      {/* Minimal toolbar: back + title on the left, icon actions on the right. */}
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" onClick={actions.leaveTrainer} className="gap-1.5 text-muted-foreground">
-          <ArrowLeft className="size-4" /> Levels
+        <Button variant="ghost" size="icon" onClick={actions.leaveTrainer} title="Back to levels" className="text-muted-foreground">
+          <ArrowLeft className="size-5" />
         </Button>
-        <div className="truncate text-sm font-semibold">{levelTitle}</div>
+        <div className="min-w-0 flex-1 truncate text-sm font-semibold">{levelTitle}</div>
+        <div className="flex items-center gap-0.5">
+          <Button variant="ghost" size="icon" onClick={actions.playStartNote} title="Play start note" className="text-muted-foreground">
+            <Piano className="size-5" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={actions.replayAll} title="Replay the interval" className="text-muted-foreground">
+            <Volume2 className="size-5" />
+          </Button>
+          {!isSingleNote && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={actions.toggleDirection}
+              title={ui.direction === "down" ? "Direction: down (tap for up)" : "Direction: up (tap for down)"}
+              className="text-muted-foreground"
+            >
+              {ui.direction === "down" ? <ArrowDown className="size-5" /> : <ArrowUp className="size-5" />}
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" onClick={actions.skip} title="Skip this note" className="text-muted-foreground">
+            <SkipForward className="size-5" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={() => void actions.buildExercise()} title="New exercise" className="text-primary">
+            <RotateCcw className="size-5" />
+          </Button>
+        </div>
       </div>
 
-      {/* The meter — the hero. Big note readout floats top-left; cue floats top-right. */}
-      <div className="relative h-[300px] w-full sm:h-[340px]">
+      {/* The meter fills all remaining vertical space. Everything else overlays it. */}
+      <div className="relative min-h-0 w-full flex-1">
         <PitchMeter
           sungMidi={ui.sungMidi}
           target={target}
@@ -42,16 +69,18 @@ export function TrainerScreen({ ui, actions, theme, trailRef, onFrame }: Props) 
           currentIdx={ui.idx}
           done={done}
           tolCents={ui.tolCents}
-          base={ui.loMidi + Math.floor((ui.hiMidi - ui.loMidi) / 2)}
+          loMidi={ui.loMidi}
+          hiMidi={ui.hiMidi}
           theme={theme}
           trailRef={trailRef}
           onFrame={onFrame}
         />
 
-        {/* Live note readout, overlaid bottom-left of the meter. */}
-        <div className="pointer-events-none absolute bottom-3 left-4">
-          <div className="text-5xl font-extrabold leading-none tracking-tight">{ui.liveNote}</div>
-          <div className="mono mt-1 h-4 text-xs text-muted-foreground">{ui.liveCents}</div>
+        {/* Sequence dots, overlaid top-center. */}
+        <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center">
+          <div className="rounded-full bg-card/70 px-3 py-1 backdrop-blur-sm">
+            <SequenceDots targets={ui.targets} idx={ui.idx} />
+          </div>
         </div>
 
         {/* Cue pill, overlaid top-right. */}
@@ -76,54 +105,34 @@ export function TrainerScreen({ ui, actions, theme, trailRef, onFrame }: Props) 
             {ui.cue === "listen" ? "Listen" : ui.cue === "sing" ? "Sing now" : "Next…"}
           </motion.div>
         </div>
+
+        {/* Live note readout, overlaid bottom-left. */}
+        <div className="pointer-events-none absolute bottom-3 left-4">
+          <div className="text-5xl font-extrabold leading-none tracking-tight">{ui.liveNote}</div>
+          <div className="mono mt-1 h-4 text-xs text-muted-foreground">{ui.liveCents}</div>
+        </div>
+
+        {/* Coverage tally + status, overlaid bottom-right. */}
+        <div className="pointer-events-none absolute bottom-3 right-4 flex flex-col items-end gap-1 text-right">
+          <div
+            className={cn(
+              "max-w-[60vw] text-sm",
+              ui.statusVariant === "good" && "font-semibold text-[hsl(var(--good))]",
+              ui.statusVariant === "near" && "text-[hsl(var(--near))]",
+              ui.statusVariant === "" && "text-muted-foreground",
+            )}
+          >
+            {ui.status}
+          </div>
+          <div className="mono text-[11px] text-muted-foreground">
+            {hitNotes >= totalNotes ? (
+              <span className="font-semibold text-[hsl(var(--good))]">✓ Whole range covered</span>
+            ) : (
+              `range ${hitNotes}/${totalNotes}`
+            )}
+          </div>
+        </div>
       </div>
-
-      {/* Sequence dots */}
-      <SequenceDots targets={ui.targets} idx={ui.idx} />
-
-      {/* Status line */}
-      <div
-        className={cn(
-          "min-h-[24px] text-center text-sm",
-          ui.statusVariant === "good" && "font-semibold text-[hsl(var(--good))]",
-          ui.statusVariant === "near" && "text-[hsl(var(--near))]",
-          ui.statusVariant === "" && "text-muted-foreground",
-        )}
-      >
-        {ui.status}
-      </div>
-
-      {/* Primary controls */}
-      <div className="flex items-center justify-center gap-2">
-        <Button variant="secondary" onClick={actions.playStartNote} className="gap-1.5 rounded-xl">
-          <Piano className="size-4" /> Start note
-        </Button>
-        <Button variant="secondary" onClick={actions.replayAll} className="gap-1.5 rounded-xl">
-          <Volume2 className="size-4" /> Replay
-        </Button>
-        <Button onClick={() => void actions.buildExercise()} className="gap-1.5 rounded-xl">
-          <RotateCcw className="size-4" /> New
-        </Button>
-      </div>
-
-      {/* Secondary controls: mode / direction / skip */}
-      <div className="flex items-center justify-center gap-2 text-xs">
-        <Button variant="ghost" size="sm" onClick={actions.toggleMode} className="gap-1.5 text-muted-foreground">
-          {ui.mode === "ear" ? <Ear className="size-4" /> : <Eye className="size-4" />}
-          {ui.mode === "ear" ? "Ear" : "Guided"}
-        </Button>
-        {!isSingleNote && (
-          <Button variant="ghost" size="sm" onClick={actions.toggleDirection} className="text-muted-foreground">
-            {ui.direction === "down" ? "↓ Down" : "↑ Up"}
-          </Button>
-        )}
-        <Button variant="ghost" size="sm" onClick={actions.skip} className="gap-1.5 text-muted-foreground">
-          <SkipForward className="size-4" /> Skip
-        </Button>
-      </div>
-
-      {/* Coverage map — quiet, at the bottom. */}
-      <CoverageMap loMidi={ui.loMidi} hiMidi={ui.hiMidi} covered={ui.covered} current={target} />
 
       {/* Success flash overlay */}
       <AnimatePresence>
