@@ -9,6 +9,7 @@ import {
   PIANO_GAIN,
   PITCH_HZ_MAX,
   PITCH_HZ_MIN,
+  SEC_PER_BEAT,
 } from "@/lib/constants";
 import { freqToMidiFloat } from "@/lib/music";
 
@@ -237,6 +238,35 @@ export class AudioEngine {
   }
 
   /**
+   * Ladder rung-1 primer: play the song-anchor melody in its own rhythm (each
+   * note carries relative `beats`), a breath, then the bare interval slow and
+   * clear — so the ear hooks the interval to a melody it already knows. Empty
+   * `anchor` = skip straight to the bare interval. Mic deafened throughout.
+   */
+  playAnchorPrimer(
+    anchor: readonly { freq: number; beats: number }[],
+    intervalFreqs: readonly number[],
+  ): void {
+    if (!this.audioCtx) return;
+    const start = this.audioCtx.currentTime + 0.05;
+    const BREATH_S = 0.5;
+    const LEAP_DUR_S = 1.0;
+    const LEAP_GAP_S = 1.0;
+    let t = start;
+    anchor.forEach(({ freq, beats }) => {
+      const dur = beats * SEC_PER_BEAT;
+      this.refNote(freq, t, dur * 0.92, 0.5); // slight gap between notes
+      t += dur;
+    });
+    if (anchor.length > 0) t += BREATH_S;
+    intervalFreqs.forEach((freq) => {
+      this.refNote(freq, t, LEAP_DUR_S, 0.5);
+      t += LEAP_GAP_S;
+    });
+    this.deafenUntil(t - start + 0.4);
+  }
+
+  /**
    * Replay the START (anchor) note. Always the first note — never a by-ear target
    * since ear mode would then leak the answer.
    */
@@ -252,7 +282,9 @@ export class AudioEngine {
    */
   playSupport(freq: number, dur: number): void {
     if (!this.audioCtx) return;
-    this.refNote(freq, this.audioCtx.currentTime + 0.02, dur, 0.4);
+    // Kept quiet (0.12, ~30% of the old 0.4) so it underpins your voice while you
+    // hold the pitch without drowning it out.
+    this.refNote(freq, this.audioCtx.currentTime + 0.02, dur, 0.12);
   }
 
   /**

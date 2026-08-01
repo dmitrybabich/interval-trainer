@@ -9,6 +9,7 @@ import {
   type Prefs,
   RANGE_OPTIONS,
   TOL_OPTIONS,
+  TUTORIAL_OPTIONS,
 } from "@/lib/constants";
 
 const VALID_VALUES: Record<keyof Prefs, readonly string[]> = {
@@ -20,11 +21,43 @@ const VALID_VALUES: Record<keyof Prefs, readonly string[]> = {
   guide: GUIDE_OPTIONS.map((o) => o.value),
   foundHint: FOUND_HINT_OPTIONS.map((o) => o.value),
   octaveMode: OCTAVE_MODE_OPTIONS.map((o) => o.value),
+  tutorial: TUTORIAL_OPTIONS.map((o) => o.value),
 };
 
-// Two localStorage keys, both try/catch-guarded so private-mode failures are silent.
+// localStorage keys, all try/catch-guarded so private-mode failures are silent.
 export const RANGE_KEY = "intervalTrainer.range";
 export const PREFS_KEY = "intervalTrainer.prefs";
+export const ANCHORS_KEY = "intervalTrainer.anchors";
+
+// Chosen song anchor per interval level: { [levelKey]: anchorKey }. Validation
+// against the actual option list happens at read time (resolveAnchor), so a stale
+// or bogus key just falls back to the default — no schema needed here.
+export type SavedAnchors = Record<string, string>;
+
+export function loadAnchorChoices(): SavedAnchors {
+  try {
+    const raw = localStorage.getItem(ANCHORS_KEY);
+    if (!raw) return {};
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return {};
+    const out: SavedAnchors = {};
+    for (const [levelKey, choice] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof choice === "string") out[levelKey] = choice;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+export function saveAnchorChoice(levelKey: string, anchorKey: string): void {
+  try {
+    const next = { ...loadAnchorChoices(), [levelKey]: anchorKey };
+    localStorage.setItem(ANCHORS_KEY, JSON.stringify(next));
+  } catch {
+    /* no-op */
+  }
+}
 
 export interface SavedRange {
   lo: number;

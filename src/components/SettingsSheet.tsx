@@ -22,6 +22,7 @@ import {
   RANGE_OPTIONS,
   THEME_OPTIONS,
   TOL_OPTIONS,
+  TUTORIAL_OPTIONS,
 } from "@/lib/constants";
 import { midiToName } from "@/lib/music";
 
@@ -116,6 +117,9 @@ export function SettingsSheet({
 
         <div className="mt-3">
           <Section title={t("settings.sectionExercise")}>
+            <Row label={t("settings.tutorial")} hint={t("settings.tutorialHint")}>
+              <Segmented value={prefs.tutorial} options={localize("tutorial", TUTORIAL_OPTIONS)} onValueChange={(v) => setPref("tutorial", v)} />
+            </Row>
             <Row label={t("settings.mode")} hint={t("settings.modeHint")}>
               <Segmented value={prefs.mode} options={localize("mode", MODE_OPTIONS)} onValueChange={(v) => setPref("mode", v)} />
             </Row>

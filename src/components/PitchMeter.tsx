@@ -32,6 +32,62 @@ const LEFT_GUTTER = 44;
 const COVERAGE_DOT_X = 34;
 const COVERAGE_DOT_R = 3;
 
+// Always-present room (semitones) beyond the current target, so a target sitting
+// at your range floor/ceiling still has visible space to show a flat/sharp
+// attempt — before the reactive voice expansion below even needs to kick in.
+const SING_HEADROOM = 5;
+
+// Soft cushion at the very edges, as a fraction of the axis span, so the sung dot
+// never kisses the border even when you're right at the current extreme.
+const AXIS_EDGE_PAD = 0.1;
+
+// How far past your calibrated range the axis will stretch to follow your voice.
+// Pitch detection throws occasional octave-error / noise blips; a reading more
+// than this far outside your range is an artifact, not singing, so we clamp it —
+// otherwise a single junk sample yanks the whole axis open for a few frames.
+const VOICE_EXPAND_LIMIT = 7;
+
+/**
+ * Vertical axis bounds. Starts from the calibrated range (padded), then:
+ *  - reserves SING_HEADROOM below the lowest / above the highest target, so an
+ *    edge target isn't jammed against the border with nowhere to sing wrong;
+ *  - expands to include the live pitch and the whole trail, so anything you sing
+ *    stays on screen;
+ *  - adds a 10% cushion at both edges so the dot never rides the border.
+ * Never shrinks below the full range.
+ */
+function axisBounds(
+  loMidi: number,
+  hiMidi: number,
+  targets: readonly number[],
+  sungMidi: number | null,
+  trail: readonly (number | null)[],
+) {
+  // Voice can push the axis out, but only within VOICE_EXPAND_LIMIT of the range —
+  // beyond that the reading is an octave-error/noise blip, not real singing, and
+  // shouldn't be allowed to yank the axis wide.
+  const voiceFloor = loMidi - VOICE_EXPAND_LIMIT;
+  const voiceCeil = hiMidi + VOICE_EXPAND_LIMIT;
+  let voiceLo = Infinity;
+  let voiceHi = -Infinity;
+  const consider = (m: number | null) => {
+    if (m == null || m < voiceFloor || m > voiceCeil) return;
+    if (m < voiceLo) voiceLo = m;
+    if (m > voiceHi) voiceHi = m;
+  };
+  consider(sungMidi);
+  for (const m of trail) consider(m);
+
+  const targetLo = targets.length ? Math.min(...targets) - SING_HEADROOM : Infinity;
+  const targetHi = targets.length ? Math.max(...targets) + SING_HEADROOM : -Infinity;
+  const baseLo = Math.min(loMidi, targetLo, Math.floor(voiceLo)) - METER_RANGE_PAD;
+  const baseHi = Math.max(hiMidi, targetHi, Math.ceil(voiceHi)) + METER_RANGE_PAD;
+  const cushion = (baseHi - baseLo) * AXIS_EDGE_PAD;
+  const lo = baseLo - cushion;
+  const hi = baseHi + cushion;
+  return { lo, hi, span: Math.max(1, hi - lo) };
+}
+
 /**
  * Canvas pitch meter: the hero of the trainer. Draws target lines, a tolerance
  * band, the sung-pitch trail, and an edge needle+dot. Redraws imperatively on
@@ -89,19 +145,18 @@ export function PitchMeter({
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
 
-      // Fixed axis over the whole vocal range (with a little padding), so every
-      // note sits at a stable spot and you can see the full range at once —
-      // rather than a window that scrolls to follow the current target.
-      const axisLo = p.loMidi - METER_RANGE_PAD;
-      const axisHi = p.hiMidi + METER_RANGE_PAD;
-      const axisSpan = Math.max(1, axisHi - axisLo);
+      // Axis spans the calibrated range, expanded to keep your voice on screen
+      // even when it dips below the floor or above the ceiling (see axisBounds).
+      const { lo: axisLo, span: axisSpan } = axisBounds(p.loMidi, p.hiMidi, p.targets, p.sungMidi, trailRef());
+      const axisHi = axisLo + axisSpan;
       const yFor = (m: number) => h - ((m - axisLo) / axisSpan) * h;
 
-      // Semitone gridlines; label naturals on the left. A coverage dot in the
-      // gutter marks every note you've already trained (green) vs not yet (gray).
+      // Semitone gridlines at integer MIDI notes (axis bounds are fractional
+      // after the edge cushion, so round inward). Label naturals on the left; a
+      // coverage dot in the gutter marks trained (green) vs untrained (gray).
       const coveredSet = new Set(p.covered);
       ctx.lineWidth = 1;
-      for (let m = axisLo; m <= axisHi; m++) {
+      for (let m = Math.ceil(axisLo); m <= Math.floor(axisHi); m++) {
         const y = yFor(m);
         ctx.strokeStyle = col.grid;
         ctx.globalAlpha = m % 12 === 0 ? 0.9 : 0.4;

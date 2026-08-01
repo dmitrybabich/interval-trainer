@@ -25,6 +25,10 @@ export const WRONG_NOTE_HINT_MS = 2000;
 // Anchor beep fires after sitting on the previous note this long.
 export const ANCHOR_HOLD_MS = 180;
 
+// Tempo of the rung-1 song primer. One source of truth so the audio engine
+// (schedules notes) and the glyph (animates the playhead) stay locked together.
+export const SEC_PER_BEAT = 0.42;
+
 // Length of the sung-pitch trail on the canvas meter.
 export const TRAIL_LENGTH = 240;
 
@@ -92,6 +96,11 @@ export const OCTAVE_MODE_OPTIONS = [
   { value: "off", label: "Full range" },
 ] as const satisfies readonly Option<"on" | "off">[];
 
+export const TUTORIAL_OPTIONS = [
+  { value: "on", label: "Tutorial ladder" },
+  { value: "off", label: "Free practice" },
+] as const satisfies readonly Option<"on" | "off">[];
+
 export const THEME_OPTIONS = [
   { value: "light", label: "Light" },
   { value: "dark", label: "Dark" },
@@ -105,6 +114,7 @@ export type DirVal = (typeof DIR_OPTIONS)[number]["value"];
 export type GuideVal = (typeof GUIDE_OPTIONS)[number]["value"];
 export type FoundHintVal = (typeof FOUND_HINT_OPTIONS)[number]["value"];
 export type OctaveModeVal = (typeof OCTAVE_MODE_OPTIONS)[number]["value"];
+export type TutorialVal = (typeof TUTORIAL_OPTIONS)[number]["value"];
 
 export interface Prefs {
   range: RangeVal;
@@ -115,6 +125,7 @@ export interface Prefs {
   guide: GuideVal;
   foundHint: FoundHintVal;
   octaveMode: OctaveModeVal;
+  tutorial: TutorialVal;
 }
 
 export const DEFAULT_PREFS: Prefs = {
@@ -126,4 +137,5 @@ export const DEFAULT_PREFS: Prefs = {
   guide: "off",
   foundHint: "on",
   octaveMode: "on",
+  tutorial: "on",
 };

@@ -13,6 +13,7 @@ import { useCalibration } from "@/hooks/useCalibration";
 import { usePrefs } from "@/hooks/usePrefs";
 import { useTheme } from "@/hooks/useTheme";
 import { useTrainer } from "@/hooks/useTrainer";
+import { LEVELS } from "@/lib/levels";
 import { RANGE_BASE } from "@/lib/music";
 import { loadSavedRange } from "@/lib/persistence";
 
@@ -73,6 +74,14 @@ function AppInner() {
       const base = RANGE_BASE[prefs.range];
       const rangeFallback = { base, lo: base - RANGE_LOW_OFFSET, hi: base + RANGE_HIGH_OFFSET };
 
+      // The tutorial ladder applies to the single-note level (the foundation
+      // pitch-matching drill) and every single-interval level (the interval
+      // ramp). Multi-step levels (triad) have no single thing to ladder, so they
+      // run flat — as does opt-out free practice.
+      const steps = LEVELS[levelIdx]?.steps.length ?? 0;
+      const hasLadder = steps <= 1;
+      const useLadder = prefs.tutorial === "on" && hasLadder;
+
       await actions.startLevel(levelIdx, {
         tolCents: Number(prefs.tol),
         holdMs: Number(prefs.hold),
@@ -81,6 +90,7 @@ function AppInner() {
         guideTone: prefs.guide === "on",
         foundHint: prefs.foundHint === "on",
         octaveMode: prefs.octaveMode === "on",
+        ladder: useLadder,
         rangeFallback,
       });
       sessionActiveRef.current = true;

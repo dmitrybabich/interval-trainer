@@ -1,12 +1,17 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowDown, ArrowLeft, ArrowUp, Piano, RotateCcw, Volume2 } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { LadderStrip } from "@/components/LadderStrip";
 import { PitchMeter } from "@/components/PitchMeter";
 import { SequenceDots } from "@/components/SequenceDots";
 import { Button } from "@/components/ui/button";
 import type { TrainerActions, UiSnapshot } from "@/hooks/useTrainer";
+import { anchorsFor, resolveAnchor } from "@/lib/anchors";
 import { LEVELS } from "@/lib/levels";
+import { loadAnchorChoices, saveAnchorChoice } from "@/lib/persistence";
+import { LADDER, ladderFor } from "@/lib/rungs";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -27,6 +32,23 @@ export function TrainerScreen({ ui, actions, theme, trailRef, onFrame }: Props) 
   const coveredSet = new Set(ui.covered);
   const totalNotes = ui.hiMidi - ui.loMidi + 1;
   const hitNotes = [...coveredSet].filter((m) => m >= ui.loMidi && m <= ui.hiMidi).length;
+
+  // Single-note runs the foundation drill, single-interval the interval ladder.
+  const ladder = level ? ladderFor(level.key) : LADDER;
+  const rung = ui.ladder ? ladder[ui.ladder.rungIdx] : null;
+
+  // Song anchors: the list for this interval and the chosen one, kept in sync with
+  // localStorage so the pick persists across sessions.
+  const anchorOptions = level ? anchorsFor(level.key) : [];
+  const [anchorKey, setAnchorKey] = useState(() =>
+    level ? (resolveAnchor(level.key, loadAnchorChoices()[level.key])?.key ?? "") : "",
+  );
+  const anchor = anchorOptions.find((a) => a.key === anchorKey) ?? anchorOptions[0];
+  const chooseAnchor = (key: string) => {
+    if (!level) return;
+    setAnchorKey(key);
+    saveAnchorChoice(level.key, key);
+  };
 
   return (
     <div className="mx-auto flex h-[calc(100dvh-7.5rem)] min-h-[440px] w-full max-w-xl flex-col gap-2">
@@ -54,11 +76,27 @@ export function TrainerScreen({ ui, actions, theme, trailRef, onFrame }: Props) 
               {ui.direction === "down" ? <ArrowDown className="size-5" /> : <ArrowUp className="size-5" />}
             </Button>
           )}
-          <Button variant="ghost" size="icon" onClick={() => void actions.buildExercise()} title={t("trainer.newExercise")} className="text-primary">
+          <Button variant="ghost" size="icon" onClick={actions.newExercise} title={t("trainer.newExercise")} className="text-primary">
             <RotateCcw className="size-5" />
           </Button>
         </div>
       </div>
+
+      {/* Ladder strip: current step + climb-reps progress + advance button. */}
+      {ui.ladder && rung && (
+        <LadderStrip
+          ladderState={ui.ladder}
+          rung={rung}
+          ladderLength={ladder.length}
+          tonic={ui.targets[0]}
+          currentIdx={ui.idx}
+          anchor={anchor}
+          anchorOptions={anchorOptions}
+          onChooseAnchor={chooseAnchor}
+          replayAnchor={actions.replayAnchor}
+          climbRung={actions.climbRung}
+        />
+      )}
 
       {/* The meter fills all remaining vertical space. Everything else overlays it. */}
       <div className="relative min-h-0 w-full flex-1">
