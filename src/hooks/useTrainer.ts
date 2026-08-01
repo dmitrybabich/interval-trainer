@@ -99,8 +99,13 @@ interface SessionRefs {
   // Armed once you leave the target's tolerance; disarmed after the "found it"
   // piano confirmation fires, so it plays once per seek rather than every frame.
   foundArmed: boolean;
+  // Debounce: ms spent continuously off-target. Only re-arm the found chime after
+  // this exceeds FOUND_REARM_MS, so a brief wobble across the tolerance edge
+  // doesn't re-fire the chime over and over.
+  offTargetMs: number;
   droneTimer: number | null;
   nextTimer: number | null;
+  readyTimer: number | null;
   // Ladder state. ladder=false runs the classic flat path untouched. rungIdx
   // indexes LADDER; rungReps counts clean reps toward CLIMB_REPS. fixedRoot pins
   // the start note across reps on rungs 1–3 (null until first exercise picks it).
@@ -114,6 +119,13 @@ interface SessionRefs {
   // Rung-1 "listen" has nothing to sing — freeze the scoring loop so singing
   // along can't advance or count; the user taps climbRung to move on.
   listenOnly: boolean;
+  // Graduation rung: suppress the found-note chime regardless of the pref, so you
+  // land every note unaided.
+  noChime: boolean;
+  // Last cue we logged, so we only emit on listen↔sing transitions (the loop runs
+  // ~60fps). Debug aid for the "mic reopens while the reference is still ringing
+  // and scores the bleed as a pass" bug.
+  prevCue: CueState | null;
 }
 
 function initSession(): SessionRefs {
@@ -141,14 +153,18 @@ function initSession(): SessionRefs {
     covered: new Set(),
     supportPlayed: false,
     foundArmed: true,
+    offTargetMs: 0,
     droneTimer: null,
     nextTimer: null,
+    readyTimer: null,
     ladder: false,
     rungIdx: 0,
     rungReps: 0,
     fixedRoot: null,
     repClean: true,
     listenOnly: false,
+    noChime: false,
+    prevCue: null,
   };
 }
 
@@ -189,6 +205,9 @@ function nextFoundationTonic(tonic: number, lo: number, hi: number): number {
 const CENTS_PER_SEMITONE = 100;
 const MS_PER_S = 1000;
 const HOLD_DECAY_RATE = 0.5;
+// Must be continuously off-target this long before the found-note chime re-arms,
+// so a brief wobble across the tolerance edge doesn't re-trigger it repeatedly.
+const FOUND_REARM_MS = 400;
 const DRONE_START_DELAY_MS = 50;
 const REPLAY_GAP_S = 0.8;
 const REPLAY_DUR_S = 1.0;
@@ -249,6 +268,7 @@ export function useTrainer(): {
     const s = S.current;
     engine.stopDrone();
     if (s.droneTimer !== null) clearTimeout(s.droneTimer);
+    if (s.readyTimer !== null) clearTimeout(s.readyTimer);
     const lv = LEVELS[s.levelIdx];
     if (!lv) return;
 
@@ -335,11 +355,13 @@ export function useTrainer(): {
     s.wrongHold = 0;
     s.anchorArmed = true;
     s.foundArmed = true;
+    s.offTargetMs = 0;
     s.repClean = true;
     s.trail = [];
 
     const listenOnly = rung ? !rung.sing : false;
     s.listenOnly = listenOnly;
+    s.noChime = rung?.noChime ?? false;
     patchUi({
       targets: notes,
       idx: 0,
@@ -356,6 +378,10 @@ export function useTrainer(): {
     });
 
     await engine.waitForPiano();
+    // Each play method returns how long the mic stays deafened — the single source
+    // of truth for when listening ends, so the "sing now" cue and the guide drone
+    // fire exactly as the mic reopens instead of re-deriving fragile timing.
+    let refDeafenS: number;
     if (rung?.playAnchor) {
       // Rung 1 primer: the song-anchor melody (transposed to root), then the bare
       // interval. Anchor plays ascending from the root — it illustrates the
@@ -364,23 +390,27 @@ export function useTrainer(): {
       const anchorNotes = anchor
         ? anchor.notes.map((n) => ({ freq: midiToFreq(start + n.offset), beats: n.beats }))
         : [];
-      engine.playAnchorPrimer(anchorNotes, notes.map(midiToFreq));
+      refDeafenS = engine.playAnchorPrimer(anchorNotes, notes.map(midiToFreq));
     } else if (s.mode === "ear") {
-      engine.playStartNote(midiToFreq(start));
+      refDeafenS = engine.playStartNote(midiToFreq(start));
     } else {
-      engine.playTargets(notes.map(midiToFreq));
+      refDeafenS = engine.playTargets(notes.map(midiToFreq));
+    }
+
+    // Subtle "reference done — sing now" cue the instant the mic reopens, so the
+    // final reference note ringing out can't be mistaken for your cue to start.
+    // Skipped on the listen-only rung — there's nothing to sing there.
+    if (!listenOnly && engine.audioCtx) {
+      s.readyTimer = window.setTimeout(() => {
+        if (s.running && s.idx === 0) engine.readyCue();
+      }, refDeafenS * MS_PER_S);
     }
 
     // Easy-mode drone: once the reference playback ends, hold a quiet drone on
     // note 1. Only for multi-note exercises — a single note is the whole drill.
     // Skipped on the listen-only rung (playAnchor) — nothing to sing under.
     if (s.guideTone && !rung?.playAnchor && notes.length > 1 && engine.audioCtx) {
-      // The deafen window from playTargets is deterministic: 0.05 head + (n-1)*1s gap + 0.9s tail.
-      const REF_HEAD_S = 0.05;
-      const REF_GAP_S = 1.0;
-      const REF_TAIL_S = 0.9;
-      const deafenS = REF_HEAD_S + (notes.length - 1) * REF_GAP_S + REF_TAIL_S;
-      const delayMs = deafenS * MS_PER_S + DRONE_START_DELAY_MS;
+      const delayMs = refDeafenS * MS_PER_S + DRONE_START_DELAY_MS;
       const firstNote = notes[0];
       s.droneTimer = window.setTimeout(() => {
         if (s.running && s.idx === 0 && firstNote !== undefined) {
@@ -412,6 +442,7 @@ export function useTrainer(): {
       s.wrongHold = 0;
       s.anchorArmed = true;
       s.foundArmed = true; // re-arm for the next note in the sequence
+      s.offTargetMs = 0;
       s.idx += 1;
 
       const done = s.idx >= s.targets.length;
@@ -501,9 +532,14 @@ export function useTrainer(): {
       const done = s.idx >= s.targets.length;
       // Listen-only rung never cues "sing" — you're only meant to take the sound in.
       const cue: CueState = s.listenOnly ? "listen" : done ? "next" : sample.muted ? "listen" : "sing";
+      if (cue !== s.prevCue) {
+        console.log(`🎚️ cue ${s.prevCue ?? "—"} → ${cue} (note ${s.idx + 1}/${s.targets.length}, muted=${sample.muted})`);
+        s.prevCue = cue;
+      }
 
-      // Anchor beep — re-find the previous note between leaps.
-      if (!done && !s.listenOnly && s.idx > 0 && sample.singing && sungMidi != null && target !== undefined) {
+      // Anchor beep — re-find the previous note between leaps. Suppressed on the
+      // no-support rung.
+      if (!done && !s.listenOnly && !s.noChime && s.idx > 0 && sample.singing && sungMidi != null && target !== undefined) {
         const anchor = s.targets[s.idx - 1];
         if (anchor !== undefined) {
           const onAnchor = Math.abs((sungMidi - anchor) * CENTS_PER_SEMITONE) <= s.tolCents;
@@ -540,11 +576,12 @@ export function useTrainer(): {
           // per seek — re-armed when you drift back off-target below.
           // In ear mode we only confirm the FIRST note; chiming later notes would
           // reveal the by-ear answer the instant you stumble onto it.
-          const mayChime = s.mode !== "ear" || s.idx === 0;
+          const mayChime = !s.noChime && (s.mode !== "ear" || s.idx === 0);
           if (s.foundHint && s.foundArmed && mayChime) {
             engine.playFoundNote(midiToFreq(target));
             s.foundArmed = false;
           }
+          s.offTargetMs = 0; // back on target — reset the re-arm debounce
           s.holding += dt;
           s.wrongHold = 0;
           const single = s.targets.length === 1;
@@ -574,19 +611,35 @@ export function useTrainer(): {
               : i18n.t("status.leapTo", { note: next !== undefined ? midiToName(next) : "?" });
           statusVariant = "good";
 
-          if (s.holding >= need) advance(!single && !isFinal);
+          // Solo (noChime) mode has no found-note chime, so the bip is the only
+          // per-note landing cue — sound it on every note, not just the last. It's
+          // a fixed-pitch beep, so it confirms "next" without leaking the pitch.
+          if (s.holding >= need) advance(!single && !isFinal && !s.noChime);
         } else {
-          s.foundArmed = true; // drifted off — re-arm the "found it" confirmation
+          // Re-arm the found chime only after you've been off-target long enough
+          // (not on a momentary wobble across the edge), so it doesn't re-fire
+          // every time your pitch grazes the tolerance boundary.
+          s.offTargetMs += dt;
+          if (s.offTargetMs >= FOUND_REARM_MS) s.foundArmed = true;
           s.holding = Math.max(0, s.holding - dt * HOLD_DECAY_RATE);
           if (s.holding < s.holdMs / 2) s.supportPlayed = false;
           s.wrongHold += dt;
           if (s.wrongHold >= WRONG_NOTE_HINT_MS) {
             s.wrongHold = 0;
-            s.repClean = false; // needed a hint — this rep won't count toward the climb
-            status = i18n.t("status.hearItAgain");
-            statusVariant = "";
-            const startNote = s.targets[0];
-            if (startNote !== undefined) engine.playHint(midiToFreq(startNote));
+            s.repClean = false; // struggled — this rep won't count toward the climb
+            // Replay the note you're ACTUALLY stuck on — but only in guided mode,
+            // where it was already played aloud in the reference. In ear mode the
+            // target is the answer you must find, so we fall back to the root
+            // (never leak it). The no-support rung withholds the hint entirely;
+            // the rep is still marked unclean so a fumbled pass can't clear the key.
+            const hintNote = s.mode === "ear" ? s.targets[0] : s.targets[s.idx];
+            if (!s.noChime && hintNote !== undefined) {
+              status = i18n.t("status.hearItAgain");
+              statusVariant = "";
+              const current = s.targets[s.idx];
+              console.log(`🎯 HINT target ${current === undefined ? "—" : midiToName(current)} (note ${s.idx + 1}/${s.targets.length})`);
+              engine.playHint(midiToFreq(hintNote));
+            }
           } else {
             liveCents = i18n.t("status.cents", {
               sign: cents > 0 ? "+" : "",
@@ -697,6 +750,7 @@ export function useTrainer(): {
     const s = S.current;
     if (s.nextTimer !== null) clearTimeout(s.nextTimer);
     if (s.droneTimer !== null) clearTimeout(s.droneTimer);
+    if (s.readyTimer !== null) clearTimeout(s.readyTimer);
     engine.stopDrone();
     stopLoop();
     patchUi({ running: false, hasDrone: false });
@@ -730,8 +784,17 @@ export function useTrainer(): {
 
   const playHint = useCallback(() => {
     const s = S.current;
-    const first = s.targets[0];
-    if (first !== undefined) engine.playHint(midiToFreq(first));
+    // Ear mode: only ever replay note 1 (the root). Replaying the whole sequence
+    // would hand you the by-ear target. Guided mode already played it aloud, so
+    // replay the full melody to reorient — not just the stuck note.
+    if (s.mode === "ear") {
+      const first = s.targets[0];
+      console.log(`🎯 HINT root ${first === undefined ? "—" : midiToName(first)} (ear mode)`);
+      if (first !== undefined) engine.playHint(midiToFreq(first));
+      return;
+    }
+    console.log(`🎯 HINT replay ${s.targets.map(midiToName).join(" ")}`);
+    engine.playTargets(s.targets.map(midiToFreq));
   }, [engine]);
 
   const toggleMode = useCallback(() => {
@@ -824,6 +887,7 @@ export function useTrainer(): {
     return () => {
       if (session.nextTimer !== null) clearTimeout(session.nextTimer);
       if (session.droneTimer !== null) clearTimeout(session.droneTimer);
+      if (session.readyTimer !== null) clearTimeout(session.readyTimer);
       stopLoop();
       engine.dispose();
     };

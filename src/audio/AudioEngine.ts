@@ -11,11 +11,31 @@ import {
   PITCH_HZ_MIN,
   SEC_PER_BEAT,
 } from "@/lib/constants";
-import { freqToMidiFloat } from "@/lib/music";
+import { freqToMidiFloat, midiToName } from "@/lib/music";
 
 interface DroneHandle {
   oscs: OscillatorNode[];
   gain: GainNode;
+}
+
+// Every sound the trainer makes has a code name so we can trace which support is
+// firing when. Logged at the source (each play method) so it fires no matter who
+// triggers it. Grep the console for "🔊" to see the full soundtrack of a session.
+export type SoundName =
+  | "REFERENCE" // full target sequence played upfront
+  | "ANCHOR_PRIMER" // rung-1 song melody + the bare interval
+  | "HINT" // replays the start note when you're stuck off-target
+  | "SUPPORT" // quiet note held under your voice while you sustain
+  | "FOUND" // chime the instant you land on the target
+  | "DRONE_START" // continuous guide tone begins
+  | "DRONE_STOP" // guide tone ends
+  | "START_NOTE" // the first note, held long, to settle onto
+  | "SUCCESS_BIP" // bright "you nailed it" beep on advance
+  | "ANCHOR_BIP" // soft "you're on your anchor" beep between leaps
+  | "READY_CUE"; // subtle "reference done — sing now" cue as the mic reopens
+
+function logSound(name: SoundName, detail = ""): void {
+  console.log(`🔊 ${name}${detail ? ` — ${detail}` : ""}`);
 }
 
 /**
@@ -224,17 +244,67 @@ export class AudioEngine {
   }
 
   /**
-   * Play the whole target sequence spaced by `gap`. Notes ring 1.2s; we reopen
-   * the mic right after the LAST note sounds (its tail is quiet).
+   * A dry mechanical "tik" — a short low-passed noise burst, like a light switch,
+   * NOT a pitched beep. `cutoff` sets how dull/deep the click sounds (lower =
+   * deeper thunk). Used for the ready cue so it can't be mistaken for a tone.
    */
-  playTargets(freqs: readonly number[]): void {
-    if (!this.audioCtx) return;
-    const t0 = this.audioCtx.currentTime + 0.05;
-    const gap = 1.0;
-    const dur = 1.2;
+  click(start: number, gain = 0.3, cutoff = 900): void {
+    const ac = this.audioCtx;
+    if (!ac) return;
+    const DUR_S = 0.02; // a few ms of noise = a transient tick, not a tone
+    const frames = Math.ceil(ac.sampleRate * DUR_S);
+    const noise = ac.createBuffer(1, frames, ac.sampleRate);
+    const data = noise.getChannelData(0);
+    for (let i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
+    const src = ac.createBufferSource();
+    src.buffer = noise;
+    const lp = ac.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = cutoff; // low cutoff = deep, dull click
+    const g = ac.createGain();
+    g.gain.setValueAtTime(gain, start);
+    g.gain.exponentialRampToValueAtTime(0.0001, start + DUR_S); // instant decay
+    src.connect(lp).connect(g).connect(ac.destination);
+    src.start(start);
+    src.stop(start + DUR_S + 0.01);
+  }
+
+  /**
+   * Play the whole target sequence spaced by `gap`, then keep the mic deafened
+   * until the LAST note has fully rung out plus a settling pause — otherwise the
+   * final note's tail bleeds into the mic and gets scored as your first sung
+   * note. Returns the total deafen duration (seconds) so callers can schedule the
+   * "sing now" cue exactly when the mic reopens.
+   */
+  playTargets(freqs: readonly number[]): number {
+    if (!this.audioCtx) return 0;
+    logSound("REFERENCE", `${freqs.length} notes`);
+    const HEAD_S = 0.05;
+    const GAP_S = 1.0;
+    const DUR_S = 1.2; // each note rings this long — the tail MUST be deafened
+    const PAUSE_S = 0.5; // deliberate breath after the reference before you sing
     const gain = 0.5;
-    freqs.forEach((freq, i) => this.refNote(freq, t0 + i * gap, dur, gain));
-    this.deafenUntil(0.05 + (freqs.length - 1) * gap + 0.9);
+    freqs.forEach((freq, i) => this.refNote(freq, this.now() + HEAD_S + i * GAP_S, DUR_S, gain));
+    // Last note starts at HEAD + (n-1)*GAP and rings DUR — cover that, then pause.
+    const deafenS = HEAD_S + (freqs.length - 1) * GAP_S + DUR_S + PAUSE_S;
+    this.deafenUntil(deafenS);
+    return deafenS;
+  }
+
+  /**
+   * Subtle two-tone "reference is done — start singing" cue. Distinct from the
+   * bright success bip and the anchor bip: a soft rising blip, played as the mic
+   * reopens so you know listening is over.
+   */
+  readyCue(): void {
+    if (!this.audioCtx) return;
+    logSound("READY_CUE", "sing now");
+    const t = this.audioCtx.currentTime;
+    // Two dry low clicks — "tik-tik," like flipping a light switch. A transient,
+    // not a tone, so it can't read as the pitched success bip.
+    this.click(t, 0.32, 700);
+    this.click(t + 0.11, 0.32, 700);
+    this.deafenUntil(0.11 + 0.02 + 0.08); // don't score the cue's own bleed
   }
 
   /**
@@ -246,8 +316,9 @@ export class AudioEngine {
   playAnchorPrimer(
     anchor: readonly { freq: number; beats: number }[],
     intervalFreqs: readonly number[],
-  ): void {
-    if (!this.audioCtx) return;
+  ): number {
+    if (!this.audioCtx) return 0;
+    logSound("ANCHOR_PRIMER", `${anchor.length} melody + ${intervalFreqs.length} interval`);
     const start = this.audioCtx.currentTime + 0.05;
     const BREATH_S = 0.5;
     const LEAP_DUR_S = 1.0;
@@ -263,16 +334,20 @@ export class AudioEngine {
       this.refNote(freq, t, LEAP_DUR_S, 0.5);
       t += LEAP_GAP_S;
     });
-    this.deafenUntil(t - start + 0.4);
+    const deafenS = t - start + 0.4;
+    this.deafenUntil(deafenS);
+    return deafenS;
   }
 
   /**
-   * Replay the START (anchor) note. Always the first note — never a by-ear target
-   * since ear mode would then leak the answer.
+   * Replay a reminder note when you're stuck. The caller picks which: the note
+   * you're seeking in guided mode, or the root in ear mode (so the by-ear target
+   * is never leaked).
    */
-  playHint(startFreq: number): void {
+  playHint(freq: number): void {
     if (!this.audioCtx) return;
-    this.refNote(startFreq, this.audioCtx.currentTime + 0.05, 2.0, 0.5);
+    logSound("HINT", `replay ${midiToName(Math.round(freqToMidiFloat(freq)))}`);
+    this.refNote(freq, this.audioCtx.currentTime + 0.05, 2.0, 0.5);
     this.deafenUntil(0.05 + 2.0 + 0.4);
   }
 
@@ -282,6 +357,7 @@ export class AudioEngine {
    */
   playSupport(freq: number, dur: number): void {
     if (!this.audioCtx) return;
+    logSound("SUPPORT", "quiet note under voice");
     // Kept quiet (0.12, ~30% of the old 0.4) so it underpins your voice while you
     // hold the pitch without drowning it out.
     this.refNote(freq, this.audioCtx.currentTime + 0.02, dur, 0.12);
@@ -294,6 +370,7 @@ export class AudioEngine {
    */
   playFoundNote(freq: number): void {
     if (!this.audioCtx) return;
+    logSound("FOUND", "landed-on-pitch chime");
     const dur = 0.7;
     this.refNote(freq, this.audioCtx.currentTime + 0.02, dur, 0.5);
     this.deafenUntil(0.02 + dur + 0.15);
@@ -306,6 +383,7 @@ export class AudioEngine {
   startDrone(freq: number): void {
     this.stopDrone();
     if (!this.audioCtx) return;
+    logSound("DRONE_START", "guide tone on");
     const ac = this.audioCtx;
     const gain = ac.createGain();
     gain.gain.setValueAtTime(0, ac.currentTime);
@@ -324,6 +402,7 @@ export class AudioEngine {
 
   stopDrone(): void {
     if (!this.drone || !this.audioCtx) return;
+    logSound("DRONE_STOP", "guide tone off");
     const { oscs, gain } = this.drone;
     const t = this.audioCtx.currentTime;
     gain.gain.cancelScheduledValues(t);
@@ -334,15 +413,19 @@ export class AudioEngine {
   }
 
   /** Play just the first note, held long, so you can settle onto it. */
-  playStartNote(freq: number): void {
-    if (!this.audioCtx) return;
+  playStartNote(freq: number): number {
+    if (!this.audioCtx) return 0;
+    logSound("START_NOTE", "first note, held long");
     this.refNote(freq, this.audioCtx.currentTime + 0.05, 3.5, 0.5);
-    this.deafenUntil(0.05 + 3.5 + 0.4);
+    const deafenS = 0.05 + 3.5 + 0.4;
+    this.deafenUntil(deafenS);
+    return deafenS;
   }
 
   /** Bright "you nailed it" confirmation. */
   bip(): void {
     if (!this.audioCtx) return;
+    logSound("SUCCESS_BIP", "nailed-it beep");
     const t = this.audioCtx.currentTime;
     this.tone(880, t, 0.12, 0.3, "triangle");
     this.tone(1320, t + 0.09, 0.12, 0.22, "triangle");
@@ -355,6 +438,7 @@ export class AudioEngine {
    */
   anchorBip(): void {
     if (!this.audioCtx) return;
+    logSound("ANCHOR_BIP", "on-your-anchor beep");
     const t = this.audioCtx.currentTime;
     this.tone(440, t, 0.1, 0.18, "sine");
     this.tone(660, t + 0.07, 0.12, 0.14, "sine");

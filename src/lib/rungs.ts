@@ -16,6 +16,9 @@ export interface Rung {
   readonly playReference: boolean; // play the target sequence before you sing
   readonly guide: boolean; // hold the guide drone under note 1
   readonly sing: boolean; // rung 1 is listen-only
+  // Suppress the found-note chime on this rung even when the pref is on — the
+  // graduation rung where you must land the notes with no per-note confirmation.
+  readonly noChime?: boolean;
   // Foundation-drill rungs only: absolute scale degrees (semitones) from a fixed
   // tonic, forming the target sequence directly. When set, this overrides the
   // interval `steps` machinery — the notes ARE tonic+degree.
@@ -52,6 +55,9 @@ export const FOUNDATION: readonly Rung[] = [
   { key: "five", degrees: [7], ...FOUNDATION_DEFAULTS },
   { key: "oneThreeFive", degrees: [0, 4, 7], ...FOUNDATION_DEFAULTS },
   { key: "arpeggio", degrees: [0, 4, 7, 4, 0], ...FOUNDATION_DEFAULTS },
+  // Graduation: the full arpeggio again, but with no found-note chime — land
+  // every note on your own to clear the key.
+  { key: "arpeggioSolo", degrees: [0, 4, 7, 4, 0], ...FOUNDATION_DEFAULTS, noChime: true },
 ];
 
 // Highest degree in the foundation drill — the tonic can't climb past hi minus

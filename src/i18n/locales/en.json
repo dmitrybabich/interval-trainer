@@ -52,7 +52,8 @@
     "oneThreeOne": { "name": "Root & third", "hint": "Sing each note, hold to confirm." },
     "five": { "name": "The fifth", "hint": "Hold it until it's dead on." },
     "oneThreeFive": { "name": "The triad", "hint": "Sing each note, hold to confirm." },
-    "arpeggio": { "name": "Full arpeggio", "hint": "Clear this to move up a key." }
+    "arpeggio": { "name": "Full arpeggio", "hint": "Sing the whole arpeggio, hold each note." },
+    "arpeggioSolo": { "name": "On your own", "hint": "No confirming chime — land every note yourself to clear the key." }
   },
   "status": {
     "listenGuided": "Listen to the target, then sing it.",

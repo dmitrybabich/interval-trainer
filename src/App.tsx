@@ -112,7 +112,8 @@ function AppInner() {
   // actual teardown, so the button and the browser back button behave the same.
   const leaveTrainer = useCallback(() => navigate("/"), [navigate]);
 
-  // Spacebar = replay hint (never leaks by-ear targets — playHint is always note 1).
+  // Spacebar = replay hint: the whole melody in guided mode, just note 1 in ear
+  // mode (replaying the sequence there would leak the by-ear target).
   useEffect(() => {
     if (!isTrainerPath(location.pathname)) return;
     const onKey = (e: KeyboardEvent) => {
