@@ -28,6 +28,28 @@ const VALID_VALUES: Record<keyof Prefs, readonly string[]> = {
 export const RANGE_KEY = "intervalTrainer.range";
 export const PREFS_KEY = "intervalTrainer.prefs";
 export const ANCHORS_KEY = "intervalTrainer.anchors";
+export const KEY_OCTAVE_KEY = "intervalTrainer.detectorKeyOctave";
+
+// The octave the detector's computer-keyboard letters bind to. Returns null when
+// unset or bogus so the caller can fall back to the current vocal range.
+export function loadKeyOctave(): number | null {
+  try {
+    const raw = localStorage.getItem(KEY_OCTAVE_KEY);
+    if (raw === null) return null;
+    const n = Number(raw);
+    return Number.isInteger(n) ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveKeyOctave(octave: number): void {
+  try {
+    localStorage.setItem(KEY_OCTAVE_KEY, String(octave));
+  } catch {
+    /* no-op */
+  }
+}
 
 // Chosen song anchor per interval level: { [levelKey]: anchorKey }. Validation
 // against the actual option list happens at read time (resolveAnchor), so a stale

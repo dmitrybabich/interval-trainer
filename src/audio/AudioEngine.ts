@@ -11,7 +11,7 @@ import {
   PITCH_HZ_MIN,
   SEC_PER_BEAT,
 } from "@/lib/constants";
-import { freqToMidiFloat, midiToName } from "@/lib/music";
+import { freqToMidiFloat, midiToFreq, midiToName } from "@/lib/music";
 
 interface DroneHandle {
   oscs: OscillatorNode[];
@@ -374,6 +374,19 @@ export class AudioEngine {
     const dur = 0.7;
     this.refNote(freq, this.audioCtx.currentTime + 0.02, dur, 0.5);
     this.deafenUntil(0.02 + dur + 0.15);
+  }
+
+  /**
+   * Play one MIDI note on the piano (sampled if loaded, else synth). For the
+   * free-sing detector keyboard: does NOT deafen the mic, since you may be
+   * singing along and a little bleed into the trail is harmless — there's no
+   * scoring here. Returns the note's frequency so callers can place a reference.
+   */
+  playKey(midi: number, dur = 1.4): number {
+    const freq = midiToFreq(midi);
+    if (!this.audioCtx) return freq;
+    this.refNote(freq, this.now() + 0.01, dur, 0.5);
+    return freq;
   }
 
   /**

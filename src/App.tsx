@@ -36,7 +36,7 @@ function isWarmupPath(pathname: string): boolean {
 }
 
 function isDetectorPath(pathname: string): boolean {
-  return pathname.startsWith("/detector");
+  return pathname === "/";
 }
 
 // A bookmarkable mic page's route lifecycle: while the route is active and the
@@ -74,6 +74,24 @@ function useMicRouteLifecycle({
   }, [active, stop]);
 }
 
+// Spacebar on the trainer route replays the hint (whole melody in guided mode,
+// just note 1 in ear mode — that's decided in the action). Ignored while a
+// control is focused so Space still toggles buttons/selects normally.
+function useReplayHintKey(active: boolean, playHint: () => void): void {
+  useEffect(() => {
+    if (!active) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== "Space") return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "SELECT" || t.tagName === "BUTTON" || t.tagName === "INPUT")) return;
+      e.preventDefault();
+      playHint();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [active, playHint]);
+}
+
 function AppInner() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -103,7 +121,7 @@ function AppInner() {
   useEffect(() => {
     if (calib.ui.finishedRange) {
       setSavedRange(calib.ui.finishedRange);
-      const t = window.setTimeout(() => navigate("/"), 1100);
+      const t = window.setTimeout(() => navigate("/intervals"), 1100);
       return () => clearTimeout(t);
     }
   }, [calib.ui.finishedRange, navigate]);
@@ -207,22 +225,10 @@ function AppInner() {
 
   // Leaving the trainer is just navigation — the pathname effect above does the
   // actual teardown, so the button and the browser back button behave the same.
-  const leaveTrainer = useCallback(() => navigate("/"), [navigate]);
+  // Back to the intervals hub, since that's where a level is launched from.
+  const leaveTrainer = useCallback(() => navigate("/intervals"), [navigate]);
 
-  // Spacebar = replay hint: the whole melody in guided mode, just note 1 in ear
-  // mode (replaying the sequence there would leak the by-ear target).
-  useEffect(() => {
-    if (!isTrainerPath(location.pathname)) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.code !== "Space") return;
-      const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === "SELECT" || t.tagName === "BUTTON" || t.tagName === "INPUT")) return;
-      e.preventDefault();
-      actions.playHint();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [location.pathname, actions]);
+  useReplayHintKey(isTrainerPath(location.pathname), actions.playHint);
 
   const trainerActions = { ...actions, leaveTrainer };
 
@@ -248,20 +254,37 @@ function AppInner() {
           <Route
             path="/"
             element={
+              <DetectorScreen
+                ui={detector.ui}
+                theme={theme}
+                loMidi={detectorRange.lo}
+                hiMidi={detectorRange.hi}
+                trailRef={detector.trailRef}
+                dwellsRef={detector.dwellsRef}
+                liveRef={detector.liveRef}
+                refsRef={detector.refsRef}
+                clockRef={detector.clockRef}
+                onFrame={detector.onFrame}
+                onStart={startDetectorMic}
+                onPlayKey={detector.playKey}
+              />
+            }
+          />
+          <Route
+            path="/intervals"
+            element={
               <SetupScreen
                 prefs={prefs}
                 savedRange={savedRange}
                 onStartLevel={(i) => void beginLevel(i)}
                 onCalibrate={() => void beginCalibration()}
-                onWarmup={() => navigate(`/warmup/${WARMUP_TRACKS[0].id}`)}
-                onDetector={() => navigate("/detector")}
                 status={setupStatus}
               />
             }
           />
           <Route
             path="/calibrate"
-            element={<CalibrationScreen ui={calib.ui} onCapture={calib.capture} onBack={() => navigate("/")} />}
+            element={<CalibrationScreen ui={calib.ui} onCapture={calib.capture} onBack={() => navigate("/intervals")} />}
           />
           <Route
             path="/level/:idx"
@@ -269,7 +292,7 @@ function AppInner() {
               sessionActive ? (
                 <TrainerScreen ui={ui} actions={trainerActions} theme={theme} trailRef={bufTrail} onFrame={onFrame} />
               ) : (
-                <Navigate to="/" replace />
+                <Navigate to="/intervals" replace />
               )
             }
           />
@@ -293,26 +316,7 @@ function AppInner() {
                 onTogglePlay={warmup.togglePlay}
                 onSeek={warmup.seek}
                 onSelectTrack={(id) => navigate(`/warmup/${id}`)}
-                onBack={() => navigate("/")}
-              />
-            }
-          />
-          <Route
-            path="/detector"
-            element={
-              <DetectorScreen
-                ui={detector.ui}
-                theme={theme}
-                loMidi={detectorRange.lo}
-                hiMidi={detectorRange.hi}
-                trailRef={detector.trailRef}
-                dwellsRef={detector.dwellsRef}
-                liveRef={detector.liveRef}
-                clockRef={detector.clockRef}
-                onFrame={detector.onFrame}
-                onStart={startDetectorMic}
-                onClear={detector.clear}
-                onBack={() => navigate("/")}
+                onBack={() => navigate("/intervals")}
               />
             }
           />

@@ -57,7 +57,7 @@ export function WarmupScreen({
   const trackOptions = tracks.map((tr) => ({ value: tr.id, label: t(tr.nameKey) }));
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-7.5rem)] min-h-[440px] w-full max-w-xl flex-col gap-2">
+    <div className="mx-auto flex size-full min-h-[440px] max-w-xl flex-col gap-2">
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={onBack} title={t("trainer.backToLevels")} className="text-muted-foreground">
           <ArrowLeft className="size-5" />

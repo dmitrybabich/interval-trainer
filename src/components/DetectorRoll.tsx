@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-import { DETECTOR_FADE_S, type Dwell, type PitchPoint } from "@/hooks/useDetector";
+import { DETECTOR_FADE_S, DETECTOR_REF_FADE_S, type Dwell, type KeyRef, type PitchPoint } from "@/hooks/useDetector";
 import { midiToName } from "@/lib/music";
 
 interface Props {
@@ -10,6 +10,7 @@ interface Props {
   trailRef: () => readonly PitchPoint[];
   dwellsRef: () => readonly Dwell[];
   liveRef: () => Dwell | null;
+  refsRef: () => readonly KeyRef[];
   clockRef: () => number;
   onFrame: (cb: () => void) => () => void;
 }
@@ -68,6 +69,35 @@ function drawGrid(sc: Scene): void {
     ctx.font = "500 11px 'Inter Variable', system-ui";
     ctx.fillText(nm, 8, y + 4);
   }
+}
+
+// Piano keys you played: each drops a dashed guide line at its pitch, running
+// from the moment you pressed it rightward to the playhead — the target to sing
+// up/down to meet. Fades with age. A note tag sits at the leading edge.
+function drawRefs(sc: Scene, refs: readonly KeyRef[]): void {
+  const { ctx, col } = sc;
+  for (const r of refs) {
+    const age = sc.now - r.startT;
+    const fade = Math.max(0, 1 - age / DETECTOR_REF_FADE_S);
+    if (fade <= 0) continue;
+    const y = sc.yFor(r.midi);
+    const x0 = Math.max(LEFT_GUTTER, sc.xFor(r.startT));
+
+    ctx.strokeStyle = col.ref;
+    ctx.globalAlpha = fade;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 5]);
+    ctx.beginPath();
+    ctx.moveTo(x0, y);
+    ctx.lineTo(sc.playX, y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = col.ref;
+    ctx.font = "600 11px 'Inter Variable', system-ui";
+    ctx.fillText(midiToName(r.midi), x0 + 3, y - 4);
+  }
+  ctx.globalAlpha = 1;
 }
 
 // The notes you stayed on: each dwell is a bar at its held pitch, spanning the
@@ -159,7 +189,7 @@ function drawLiveDot(sc: Scene, trail: readonly PitchPoint[]): void {
  * Sustained notes render as fading bars — the ones you held longest stay boldest
  * — while the raw sung pitch draws as a live trail on top. Redraws every frame.
  */
-export function DetectorRoll({ theme, loMidi, hiMidi, trailRef, dwellsRef, liveRef, clockRef, onFrame }: Props) {
+export function DetectorRoll({ theme, loMidi, hiMidi, trailRef, dwellsRef, liveRef, refsRef, clockRef, onFrame }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rangeRef = useRef({ loMidi, hiMidi });
   rangeRef.current = { loMidi, hiMidi };
@@ -182,6 +212,7 @@ export function DetectorRoll({ theme, loMidi, hiMidi, trailRef, dwellsRef, liveR
       grid: cssHsl("--meter-grid"),
       muted: cssHsl("--muted-foreground"),
       trail: cssHsl("--foreground"),
+      ref: cssHsl("--good"),
       playhead: cssHslA("--primary", 0.5),
     };
 
@@ -190,6 +221,7 @@ export function DetectorRoll({ theme, loMidi, hiMidi, trailRef, dwellsRef, liveR
       const trail = trailRef();
       const dwells = dwellsRef();
       const live = liveRef();
+      const refs = refsRef();
 
       const dpr = window.devicePixelRatio || 1;
       const w = canvas.clientWidth;
@@ -218,6 +250,13 @@ export function DetectorRoll({ theme, loMidi, hiMidi, trailRef, dwellsRef, liveR
         sungLo = Math.min(sungLo, p.midi);
         sungHi = Math.max(sungHi, p.midi);
       }
+      // Played keys open the axis too, so a reference outside your range shows.
+      // Their line runs to the playhead, so any unfaded ref is on-screen.
+      for (const rf of refs) {
+        if (now - rf.startT > DETECTOR_REF_FADE_S) continue;
+        sungLo = Math.min(sungLo, rf.midi);
+        sungHi = Math.max(sungHi, rf.midi);
+      }
       const tgtLo = Math.min(r.loMidi - PITCH_PAD, Number.isFinite(sungLo) ? sungLo - PITCH_PAD : Infinity);
       const tgtHi = Math.max(r.hiMidi + PITCH_PAD, Number.isFinite(sungHi) ? sungHi + PITCH_PAD : -Infinity);
       if (tgtLo < ax.lo) ax.lo += (tgtLo - ax.lo) * AXIS_EASE;
@@ -244,6 +283,7 @@ export function DetectorRoll({ theme, loMidi, hiMidi, trailRef, dwellsRef, liveR
       };
 
       drawGrid(sc);
+      drawRefs(sc, refs);
       drawDwells(sc, dwells, live);
 
       ctx.strokeStyle = col.playhead;
@@ -259,7 +299,7 @@ export function DetectorRoll({ theme, loMidi, hiMidi, trailRef, dwellsRef, liveR
 
     draw();
     return onFrame(draw);
-  }, [onFrame, trailRef, dwellsRef, liveRef, clockRef, theme]);
+  }, [onFrame, trailRef, dwellsRef, liveRef, refsRef, clockRef, theme]);
 
   return (
     <div className="relative size-full">

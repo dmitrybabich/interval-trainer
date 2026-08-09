@@ -2,12 +2,14 @@ import { AnimatePresence, motion } from "framer-motion";
 import { SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { SettingsSheet } from "@/components/SettingsSheet";
 import { Button } from "@/components/ui/button";
+import { Segmented } from "@/components/ui/segmented";
 import type { Theme } from "@/hooks/useTheme";
 import type { Prefs } from "@/lib/constants";
+import { WARMUP_TRACKS } from "@/lib/warmupTracks";
 
 interface Props {
   prefs: Prefs;
@@ -16,6 +18,24 @@ interface Props {
   onThemeChange: (theme: Theme) => void;
   savedRange: { lo: number; hi: number } | null;
   onCalibrate: () => void;
+}
+
+type Activity = "detector" | "intervals" | "warmup";
+
+// The top-level activities the header switcher hops between. Deep screens
+// (a running level, calibration) aren't here — they carry their own back button
+// and hide the switcher entirely.
+const ACTIVITY_PATHS: Record<Activity, string> = {
+  detector: "/",
+  intervals: "/intervals",
+  warmup: `/warmup/${WARMUP_TRACKS[0].id}`,
+};
+
+function activityForPath(pathname: string): Activity | null {
+  if (pathname === "/") return "detector";
+  if (pathname.startsWith("/intervals")) return "intervals";
+  if (pathname.startsWith("/warmup")) return "warmup";
+  return null; // level / calibrate — no switcher
 }
 
 /**
@@ -27,27 +47,36 @@ interface Props {
 export function Layout({ prefs, setPref, theme, onThemeChange, savedRange, onCalibrate }: Props) {
   const { t } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  const activity = activityForPath(location.pathname);
+  const activityOptions = [
+    { value: "detector" as const, label: t("nav.detector") },
+    { value: "intervals" as const, label: t("nav.intervals") },
+    { value: "warmup" as const, label: t("nav.warmup") },
+  ];
+
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="mx-auto flex w-full max-w-xl items-center justify-between px-4 pb-2 pt-6">
-        <div>
+    <div className="flex h-dvh flex-col">
+      <header className="mx-auto flex w-full max-w-xl items-center justify-between gap-3 px-4 py-3">
+        {activity ? (
+          <Segmented value={activity} options={activityOptions} onValueChange={(a) => navigate(ACTIVITY_PATHS[a])} />
+        ) : (
           <h1 className="text-lg font-semibold tracking-tight">{t("app.title")}</h1>
-          <p className="text-xs text-muted-foreground">{t("app.tagline")}</p>
-        </div>
+        )}
         <Button
           variant="ghost"
           size="icon"
           onClick={() => setSettingsOpen(true)}
-          className="rounded-full text-muted-foreground"
+          className="shrink-0 rounded-full text-muted-foreground"
           title={t("settings.title")}
         >
           <SlidersHorizontal className="size-5" />
         </Button>
       </header>
 
-      <main className="w-full flex-1 px-4 pb-6 pt-2">
+      <main className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 pt-1">
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
@@ -55,22 +84,12 @@ export function Layout({ prefs, setPref, theme, onThemeChange, savedRange, onCal
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
+            className="h-full"
           >
             <Outlet />
           </motion.div>
         </AnimatePresence>
       </main>
-
-      <footer className="mx-auto w-full max-w-xl px-4 pb-8 pt-2 text-center text-xs text-muted-foreground/70">
-        <a
-          href="https://github.com/ianprime0509/pitchy"
-          target="_blank"
-          rel="noopener"
-          className="transition-colors hover:text-foreground"
-        >
-          {t("app.pitchCredit")}
-        </a>
-      </footer>
 
       <SettingsSheet
         open={settingsOpen}

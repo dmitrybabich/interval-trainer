@@ -51,7 +51,7 @@ export function TrainerScreen({ ui, actions, theme, trailRef, onFrame }: Props) 
   };
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-7.5rem)] min-h-[440px] w-full max-w-xl flex-col gap-2">
+    <div className="mx-auto flex size-full min-h-[440px] max-w-xl flex-col gap-2">
       {/* Minimal toolbar: back + title on the left, icon actions on the right. */}
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={actions.leaveTrainer} title={t("trainer.backToLevels")} className="text-muted-foreground">

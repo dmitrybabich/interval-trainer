@@ -1,10 +1,7 @@
-import { ArrowLeft, Eraser } from "lucide-react";
-import { useTranslation } from "react-i18next";
-
 import { DetectorRoll } from "@/components/DetectorRoll";
 import { MicGate } from "@/components/MicGate";
-import { Button } from "@/components/ui/button";
-import type { DetectorUi, Dwell, PitchPoint } from "@/hooks/useDetector";
+import { PianoKeyboard } from "@/components/PianoKeyboard";
+import type { DetectorUi, Dwell, KeyRef, PitchPoint } from "@/hooks/useDetector";
 
 interface Props {
   ui: DetectorUi;
@@ -14,11 +11,11 @@ interface Props {
   trailRef: () => readonly PitchPoint[];
   dwellsRef: () => readonly Dwell[];
   liveRef: () => Dwell | null;
+  refsRef: () => readonly KeyRef[];
   clockRef: () => number;
   onFrame: (cb: () => void) => () => void;
   onStart: () => void;
-  onClear: () => void;
-  onBack: () => void;
+  onPlayKey: (midi: number) => void;
 }
 
 export function DetectorScreen({
@@ -29,28 +26,14 @@ export function DetectorScreen({
   trailRef,
   dwellsRef,
   liveRef,
+  refsRef,
   clockRef,
   onFrame,
   onStart,
-  onClear,
-  onBack,
+  onPlayKey,
 }: Props) {
-  const { t } = useTranslation();
-
   return (
-    <div className="flex h-[calc(100dvh-7.5rem)] min-h-[440px] w-full flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={onBack} title={t("trainer.backToLevels")} className="text-muted-foreground">
-          <ArrowLeft className="size-5" />
-        </Button>
-        <div className="min-w-0 flex-1 truncate text-sm font-semibold">{t("detector.title")}</div>
-        <Button variant="ghost" size="icon" onClick={onClear} disabled={!ui.ready} title={t("detector.clear")} className="text-muted-foreground">
-          <Eraser className="size-5" />
-        </Button>
-      </div>
-
-      <p className="px-1 text-xs text-muted-foreground">{t("detector.hint")}</p>
-
+    <div className="flex size-full min-h-[440px] flex-col gap-2">
       <div className="min-h-0 flex-1">
         <MicGate ready={ui.ready} onStart={onStart}>
           <DetectorRoll
@@ -60,11 +43,14 @@ export function DetectorScreen({
             trailRef={trailRef}
             dwellsRef={dwellsRef}
             liveRef={liveRef}
+            refsRef={refsRef}
             clockRef={clockRef}
             onFrame={onFrame}
           />
         </MicGate>
       </div>
+
+      <PianoKeyboard loMidi={loMidi} hiMidi={hiMidi} onPlay={onPlayKey} />
     </div>
   );
 }

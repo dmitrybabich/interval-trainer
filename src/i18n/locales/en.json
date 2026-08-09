@@ -4,6 +4,11 @@
     "tagline": "Sing it. Hold it. Hear the chime.",
     "pitchCredit": "Pitch detection by pitchy"
   },
+  "nav": {
+    "detector": "Detector",
+    "intervals": "Intervals",
+    "warmup": "Warm-up"
+  },
   "setup": {
     "yourRange": "Your range",
     "calibrated": "Calibrated · tap to redo",
@@ -45,7 +50,10 @@
     "cardName": "Pitch detector",
     "cardDesc": "Sing freely — the notes you hold light up and fade away.",
     "hint": "Sing a melody. The notes you stay on longest stand out; older ones fade.",
-    "clear": "Clear the history"
+    "clear": "Clear the history",
+    "random": "Random",
+    "replay": "Replay",
+    "keys": "Keys:"
   },
   "trainer": {
     "backToLevels": "Back to levels",

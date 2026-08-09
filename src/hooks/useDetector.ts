@@ -19,6 +19,13 @@ export interface Dwell {
   endT: number;
 }
 
+// A piano key you played: drops a horizontal guide line on the roll at that
+// pitch so you can sing to meet it. Fades over REF_FADE_S like a ringing note.
+export interface KeyRef {
+  midi: number;
+  startT: number;
+}
+
 // Ring buffer for the sung trail — enough to fill the visible window plus slack.
 const TRAIL_CAP = 1200;
 // A hold must last this long to register as a note you "stayed on".
@@ -29,6 +36,8 @@ const GAP_S = 0.12;
 // Dwells linger this long after they end, fading out — the "disappears over time"
 // memory of your melody. Older than this and they're pruned.
 const FADE_S = 10;
+// A played piano key's guide line lingers this long before fading out.
+const REF_FADE_S = 8;
 
 interface LiveHold {
   note: number;
@@ -72,6 +81,31 @@ function foldPitch(midi: number | null, now: number, cur: LiveHold | null, dwell
   return cur;
 }
 
+interface Buffers {
+  trail: PitchPoint[];
+  dwells: Dwell[];
+  refs: KeyRef[];
+  hold: LiveHold | null;
+}
+
+// One rAF frame of work: sample the pitch, extend the trail + hold, and prune
+// anything that's faded past its window. Mutates the buffers in place; the hook
+// just owns them and fires the frame callbacks after.
+function stepDetector(engine: AudioEngine, buf: Buffers): void {
+  const now = engine.now();
+  const s = engine.readPitch();
+  buf.trail.push({ t: now, midi: s.singing ? s.midi : null });
+  if (buf.trail.length > TRAIL_CAP) buf.trail.shift();
+
+  buf.hold = foldPitch(s.singing ? s.midi : null, now, buf.hold, buf.dwells);
+  if (buf.dwells.length > 0 && now - buf.dwells[0].endT > FADE_S) {
+    buf.dwells = buf.dwells.filter((d) => now - d.endT <= FADE_S);
+  }
+  if (buf.refs.length > 0 && now - buf.refs[0].startT > REF_FADE_S) {
+    buf.refs = buf.refs.filter((r) => now - r.startT <= REF_FADE_S);
+  }
+}
+
 /**
  * Freeform real-time pitch detector: owns its AudioEngine + mic + rAF loop, no
  * track and no targets. Each frame it samples your pitch, appends it to the
@@ -85,37 +119,23 @@ export function useDetector(): {
   trailRef: () => readonly PitchPoint[];
   dwellsRef: () => readonly Dwell[];
   liveRef: () => Dwell | null;
+  refsRef: () => readonly KeyRef[];
   clockRef: () => number;
   onFrame: (cb: () => void) => () => void;
   start: (onDenied: (msg: string) => void) => Promise<boolean>;
   stop: () => void;
   clear: () => void;
+  playKey: (midi: number) => void;
 } {
   const engineRef = useRef<AudioEngine>(new AudioEngine());
   const rafId = useRef<number | null>(null);
-  const trail = useRef<PitchPoint[]>([]);
-  const dwells = useRef<Dwell[]>([]);
-  const hold = useRef<LiveHold | null>(null);
+  const buf = useRef<Buffers>({ trail: [], dwells: [], refs: [], hold: null });
   const frameCbs = useRef(new Set<() => void>());
 
   const [ui, setUi] = useState<DetectorUi>({ ready: false });
 
   const loop = useCallback(() => {
-    const engine = engineRef.current;
-    const now = engine.now();
-    const s = engine.readPitch();
-    const midi = s.singing ? s.midi : null;
-
-    trail.current.push({ t: now, midi });
-    if (trail.current.length > TRAIL_CAP) trail.current.shift();
-
-    hold.current = foldPitch(midi, now, hold.current, dwells.current);
-
-    // Prune faded dwells so the array can't grow without bound in a long session.
-    if (dwells.current.length > 0 && now - dwells.current[0].endT > FADE_S) {
-      dwells.current = dwells.current.filter((d) => now - d.endT <= FADE_S);
-    }
-
+    stepDetector(engineRef.current, buf.current);
     frameCbs.current.forEach((cb) => cb());
     rafId.current = requestAnimationFrame(loop);
   }, []);
@@ -134,21 +154,24 @@ export function useDetector(): {
     [loop],
   );
 
+  // Sound a piano key and drop its guide line on the roll. The engine's
+  // AudioContext comes up with the mic, so this is live once the page is ready.
+  const playKey = useCallback((midi: number) => {
+    engineRef.current.playKey(midi);
+    buf.current.refs.push({ midi, startT: engineRef.current.now() });
+  }, []);
+
   const clear = useCallback(() => {
-    trail.current = [];
-    dwells.current = [];
-    hold.current = null;
+    buf.current = { trail: [], dwells: [], refs: [], hold: null };
   }, []);
 
   const stop = useCallback(() => {
     if (rafId.current !== null) cancelAnimationFrame(rafId.current);
     rafId.current = null;
     engineRef.current.dispose();
-    trail.current = [];
-    dwells.current = [];
-    hold.current = null;
+    clear();
     setUi({ ready: false });
-  }, []);
+  }, [clear]);
 
   useEffect(() => {
     const engine = engineRef.current;
@@ -158,20 +181,22 @@ export function useDetector(): {
     };
   }, []);
 
-  const trailRef = useCallback((): readonly PitchPoint[] => trail.current, []);
-  const dwellsRef = useCallback((): readonly Dwell[] => dwells.current, []);
+  const trailRef = useCallback((): readonly PitchPoint[] => buf.current.trail, []);
+  const dwellsRef = useCallback((): readonly Dwell[] => buf.current.dwells, []);
   const liveRef = useCallback((): Dwell | null => {
-    const h = hold.current;
+    const h = buf.current.hold;
     if (!h || h.lastT - h.startT < DWELL_MIN_S) return null;
     return { note: h.note, centerMidi: h.sum / h.n, startT: h.startT, endT: h.lastT };
   }, []);
+  const refsRef = useCallback((): readonly KeyRef[] => buf.current.refs, []);
   const clockRef = useCallback((): number => engineRef.current.now(), []);
   const onFrame = useCallback((cb: () => void) => {
     frameCbs.current.add(cb);
     return () => frameCbs.current.delete(cb);
   }, []);
 
-  return { ui, trailRef, dwellsRef, liveRef, clockRef, onFrame, start, stop, clear };
+  return { ui, trailRef, dwellsRef, liveRef, refsRef, clockRef, onFrame, start, stop, clear, playKey };
 }
 
 export const DETECTOR_FADE_S = FADE_S;
+export const DETECTOR_REF_FADE_S = REF_FADE_S;
