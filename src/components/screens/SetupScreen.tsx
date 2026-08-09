@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Sparkles } from "lucide-react";
+import { Activity, Music, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { Prefs } from "@/lib/constants";
@@ -16,6 +16,8 @@ interface Props {
   savedRange: { lo: number; hi: number } | null;
   onStartLevel: (idx: number) => void;
   onCalibrate: () => void;
+  onWarmup: () => void;
+  onDetector: () => void;
   status: string;
 }
 
@@ -53,7 +55,7 @@ function IntervalGlyph({ steps, direction }: { steps: readonly number[]; directi
   );
 }
 
-export function SetupScreen({ prefs, savedRange, onStartLevel, onCalibrate, status }: Props) {
+export function SetupScreen({ prefs, savedRange, onStartLevel, onCalibrate, onWarmup, onDetector, status }: Props) {
   const { t } = useTranslation();
   const modeLabel = t(`options.mode.${prefs.mode}`);
   const dirLabel = prefs.direction === "down" ? t("setup.descending") : t("setup.ascending");
@@ -117,6 +119,34 @@ export function SetupScreen({ prefs, savedRange, onStartLevel, onCalibrate, stat
           </motion.button>
         ))}
       </div>
+
+      {/* Warm-up: a separate, freeform sing-along to a backing track — no scoring. */}
+      <button
+        onClick={onWarmup}
+        className="theme-fade group flex items-center gap-4 rounded-2xl border bg-card p-4 text-left shadow-sm transition-colors hover:border-primary/60"
+      >
+        <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
+          <Music className="size-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-semibold">{t("warmup.cardName")}</div>
+          <div className="truncate text-xs text-muted-foreground">{t("warmup.cardDesc")}</div>
+        </div>
+      </button>
+
+      {/* Free-sing pitch detector — no track, no scoring; see the notes you hold. */}
+      <button
+        onClick={onDetector}
+        className="theme-fade group flex items-center gap-4 rounded-2xl border bg-card p-4 text-left shadow-sm transition-colors hover:border-primary/60"
+      >
+        <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
+          <Activity className="size-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-semibold">{t("detector.cardName")}</div>
+          <div className="truncate text-xs text-muted-foreground">{t("detector.cardDesc")}</div>
+        </div>
+      </button>
 
       {status && <div className="text-center text-sm text-[hsl(var(--near))]">{status}</div>}
     </div>

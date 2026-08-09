@@ -25,6 +25,28 @@
     "octave": { "name": "Octave", "desc": "12 semitones." },
     "majorTriad": { "name": "Major triad", "desc": "Maj 3rd then min 3rd (do-mi-sol)." }
   },
+  "mic": {
+    "enable": "Enable microphone"
+  },
+  "warmup": {
+    "title": "Warm-up sing-along",
+    "cardName": "Warm-up",
+    "cardDesc": "Sing along to the track — watch your pitch ride the line.",
+    "headphones": "Use headphones",
+    "play": "Play",
+    "pause": "Pause",
+    "tracks": {
+      "track1": "Track 1",
+      "track2": "Track 2"
+    }
+  },
+  "detector": {
+    "title": "Pitch detector",
+    "cardName": "Pitch detector",
+    "cardDesc": "Sing freely — the notes you hold light up and fade away.",
+    "hint": "Sing a melody. The notes you stay on longest stand out; older ones fade.",
+    "clear": "Clear the history"
+  },
   "trainer": {
     "backToLevels": "Back to levels",
     "playStartNote": "Play start note",
