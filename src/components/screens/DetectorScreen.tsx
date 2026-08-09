@@ -1,7 +1,9 @@
 import { DetectorRoll } from "@/components/DetectorRoll";
 import { MicGate } from "@/components/MicGate";
 import { PianoKeyboard } from "@/components/PianoKeyboard";
+import { PianoQuickKeys } from "@/components/PianoQuickKeys";
 import type { DetectorUi, Dwell, KeyRef, PitchPoint } from "@/hooks/useDetector";
+import { usePiano } from "@/hooks/usePiano";
 
 interface Props {
   ui: DetectorUi;
@@ -32,9 +34,11 @@ export function DetectorScreen({
   onStart,
   onPlayKey,
 }: Props) {
+  const piano = usePiano({ rangeLo: loMidi, rangeHi: hiMidi, onPlay: onPlayKey });
+
   return (
     <div className="flex size-full min-h-[440px] flex-col gap-2">
-      <div className="min-h-0 flex-1">
+      <div className="relative min-h-0 flex-1">
         <MicGate ready={ui.ready} onStart={onStart}>
           <DetectorRoll
             theme={theme}
@@ -48,9 +52,10 @@ export function DetectorScreen({
             onFrame={onFrame}
           />
         </MicGate>
+        {ui.ready && <PianoQuickKeys piano={piano} />}
       </div>
 
-      <PianoKeyboard loMidi={loMidi} hiMidi={hiMidi} onPlay={onPlayKey} />
+      <PianoKeyboard piano={piano} />
     </div>
   );
 }

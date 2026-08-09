@@ -46,14 +46,11 @@
     }
   },
   "detector": {
-    "title": "Pitch detector",
-    "cardName": "Pitch detector",
-    "cardDesc": "Sing freely — the notes you hold light up and fade away.",
-    "hint": "Sing a melody. The notes you stay on longest stand out; older ones fade.",
-    "clear": "Clear the history",
-    "random": "Random",
-    "replay": "Replay",
-    "keys": "Keys:"
+    "random": "Random note",
+    "replay": "Replay last note",
+    "octave": "Octave & view",
+    "octaveOnly": "Octave",
+    "fullRange": "Range"
   },
   "trainer": {
     "backToLevels": "Back to levels",

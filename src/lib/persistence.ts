@@ -29,9 +29,10 @@ export const RANGE_KEY = "intervalTrainer.range";
 export const PREFS_KEY = "intervalTrainer.prefs";
 export const ANCHORS_KEY = "intervalTrainer.anchors";
 export const KEY_OCTAVE_KEY = "intervalTrainer.detectorKeyOctave";
+export const PIANO_VIEW_KEY = "intervalTrainer.detectorPianoView";
 
-// The octave the detector's computer-keyboard letters bind to. Returns null when
-// unset or bogus so the caller can fall back to the current vocal range.
+// The octave the detector piano centres on. Returns null when unset or bogus so
+// the caller can fall back to a sensible default.
 export function loadKeyOctave(): number | null {
   try {
     const raw = localStorage.getItem(KEY_OCTAVE_KEY);
@@ -46,6 +47,27 @@ export function loadKeyOctave(): number | null {
 export function saveKeyOctave(octave: number): void {
   try {
     localStorage.setItem(KEY_OCTAVE_KEY, String(octave));
+  } catch {
+    /* no-op */
+  }
+}
+
+// Piano view: one octave, or the whole configured span. Persisted as a plain
+// string; anything unrecognised reads back as null so the caller defaults.
+export type PianoView = "octave" | "range";
+
+export function loadPianoView(): PianoView | null {
+  try {
+    const raw = localStorage.getItem(PIANO_VIEW_KEY);
+    return raw === "octave" || raw === "range" ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+export function savePianoView(view: PianoView): void {
+  try {
+    localStorage.setItem(PIANO_VIEW_KEY, view);
   } catch {
     /* no-op */
   }
