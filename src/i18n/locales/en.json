@@ -2,7 +2,8 @@
   "app": {
     "title": "Interval Trainer",
     "tagline": "Sing it. Hold it. Hear the chime.",
-    "pitchCredit": "Pitch detection by pitchy"
+    "pitchCredit": "Pitch detection by pitchy",
+    "reportIssue": "Report an issue on GitHub"
   },
   "nav": {
     "detector": "Detector",

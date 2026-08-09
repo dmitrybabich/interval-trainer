@@ -7,9 +7,12 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { SettingsSheet } from "@/components/SettingsSheet";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Theme } from "@/hooks/useTheme";
 import type { Prefs } from "@/lib/constants";
 import { WARMUP_TRACKS } from "@/lib/warmupTracks";
+
+const ISSUES_URL = "https://github.com/dmitrybabich/interval-trainer/issues";
 
 interface Props {
   prefs: Prefs;
@@ -36,6 +39,16 @@ function activityForPath(pathname: string): Activity | null {
   if (pathname.startsWith("/intervals")) return "intervals";
   if (pathname.startsWith("/warmup")) return "warmup";
   return null; // level / calibrate — no switcher
+}
+
+// GitHub's Octocat mark. Inline (not lucide's deprecated Github icon) so it stays
+// monochrome via currentColor and never breaks on a brand-icon removal.
+function GithubMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" className={className}>
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/>
+    </svg>
+  );
 }
 
 /**
@@ -65,15 +78,31 @@ export function Layout({ prefs, setPref, theme, onThemeChange, savedRange, onCal
         ) : (
           <h1 className="text-lg font-semibold tracking-tight">{t("app.title")}</h1>
         )}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setSettingsOpen(true)}
-          className="shrink-0 rounded-full text-muted-foreground"
-          title={t("settings.title")}
-        >
-          <SlidersHorizontal className="size-5" />
-        </Button>
+        <div className="flex shrink-0 items-center gap-0.5">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <a
+                href={ISSUES_URL}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={t("app.reportIssue")}
+                className="grid size-9 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <GithubMark className="size-5" />
+              </a>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{t("app.reportIssue")}</TooltipContent>
+          </Tooltip>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSettingsOpen(true)}
+            className="rounded-full text-muted-foreground"
+            title={t("settings.title")}
+          >
+            <SlidersHorizontal className="size-5" />
+          </Button>
+        </div>
       </header>
 
       <main className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 pt-1">

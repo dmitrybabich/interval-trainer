@@ -2,7 +2,8 @@
   "app": {
     "title": "Тренажёр интервалов",
     "tagline": "Спой. Удержи. Услышь сигнал.",
-    "pitchCredit": "Определение высоты тона — pitchy"
+    "pitchCredit": "Определение высоты тона — pitchy",
+    "reportIssue": "Сообщить о проблеме на GitHub"
   },
   "nav": {
     "detector": "Детектор",
