@@ -7,6 +7,7 @@ import { DetectorScreen } from "@/components/screens/DetectorScreen";
 import { SetupScreen } from "@/components/screens/SetupScreen";
 import { TrainerScreen } from "@/components/screens/TrainerScreen";
 import { WarmupScreen } from "@/components/screens/WarmupScreen";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { useCalibration } from "@/hooks/useCalibration";
 import { useDetector } from "@/hooks/useDetector";
 import { usePrefs } from "@/hooks/usePrefs";
@@ -329,8 +330,10 @@ function AppInner() {
 
 export function App() {
   return (
-    <HashRouter>
-      <AppInner />
-    </HashRouter>
+    <TooltipProvider delayDuration={300} skipDelayDuration={150}>
+      <HashRouter>
+        <AppInner />
+      </HashRouter>
+    </TooltipProvider>
   );
 }
