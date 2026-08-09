@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 
+import { useIsTouch } from "@/hooks/useMediaQuery";
 import type { Piano } from "@/hooks/usePiano";
 import { KEY_BY_OFFSET } from "@/hooks/usePiano";
 import { midiToName, NOTE_NAMES } from "@/lib/music";
@@ -39,19 +40,22 @@ interface KeyInfo {
  * one octave or the full vocal range, per the view toggle — so this component
  * has no view logic of its own. White keys lay out in a row; black keys straddle
  * the gaps (absolute-positioned by their white neighbour) so it stays a real
- * keyboard at any width. Shortcut letters mark the selected octave.
+ * keyboard at any width. Shortcut letters mark the selected octave, but only on
+ * devices with a physical keyboard — on touch they'd be meaningless noise.
  */
 export function PianoKeyboard({ piano }: Props) {
   const { keyOctave, loMidi, hiMidi, active, press } = piano;
+  const isTouch = useIsTouch();
 
   const keys = useMemo<readonly KeyInfo[]>(() => {
     const base = (keyOctave + 1) * 12; // MIDI of the selected octave's C
     const out: KeyInfo[] = [];
     for (let m = loMidi; m <= hiMidi; m++) {
-      out.push({ midi: m, black: isBlack(m), label: KEY_BY_OFFSET[m - base] ?? null });
+      const label = isTouch ? null : (KEY_BY_OFFSET[m - base] ?? null);
+      out.push({ midi: m, black: isBlack(m), label });
     }
     return out;
-  }, [loMidi, hiMidi, keyOctave]);
+  }, [loMidi, hiMidi, keyOctave, isTouch]);
 
   const whiteCount = keys.filter((kb) => !kb.black).length;
   const whiteW = 100 / Math.max(1, whiteCount);
