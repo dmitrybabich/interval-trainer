@@ -1,10 +1,11 @@
-import { Dice5, Music2, Repeat } from "lucide-react";
+import { Dice5, Music2, Repeat, Waves } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ShortcutKey, Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Piano } from "@/hooks/usePiano";
 import { PIANO_OCTAVES } from "@/hooks/usePiano";
+import { midiToName } from "@/lib/music";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -65,6 +66,25 @@ export function PianoQuickKeys({ piano }: Props) {
           <ShortcutKey>space</ShortcutKey>
           <ShortcutKey>↑</ShortcutKey>
         </TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={piano.toggleDrone}
+            aria-pressed={piano.droneOn}
+            aria-label={t("detector.drone")}
+            className={cn(ROUND_BTN, piano.droneOn && "border-primary bg-primary text-primary-foreground")}
+          >
+            <Waves className="size-5" />
+            {piano.droneMidi != null && (
+              <span className="absolute -bottom-1 rounded bg-primary px-1 text-[10px] font-bold tabular-nums leading-tight text-primary-foreground">
+                {midiToName(piano.droneMidi)}
+              </span>
+            )}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="left">{t("detector.drone")}</TooltipContent>
       </Tooltip>
 
       <div className="pointer-events-auto relative flex flex-col items-end">

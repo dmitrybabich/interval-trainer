@@ -18,6 +18,7 @@ interface Props {
   onFrame: (cb: () => void) => () => void;
   onStart: () => void;
   onPlayKey: (midi: number) => void;
+  onDrone: (midi: number | null) => void;
 }
 
 export function DetectorScreen({
@@ -33,8 +34,9 @@ export function DetectorScreen({
   onFrame,
   onStart,
   onPlayKey,
+  onDrone,
 }: Props) {
-  const piano = usePiano({ rangeLo: loMidi, rangeHi: hiMidi, onPlay: onPlayKey });
+  const piano = usePiano({ rangeLo: loMidi, rangeHi: hiMidi, onPlay: onPlayKey, onDrone });
 
   return (
     <div className="flex size-full min-h-[440px] flex-col gap-2">
@@ -48,6 +50,7 @@ export function DetectorScreen({
             dwellsRef={dwellsRef}
             liveRef={liveRef}
             refsRef={refsRef}
+            droneMidi={piano.droneMidi}
             clockRef={clockRef}
             onFrame={onFrame}
           />

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AudioEngine } from "@/audio/AudioEngine";
+import { midiToFreq } from "@/lib/music";
 
 // One frame of sung pitch, stamped against the AudioContext clock. Unlike the
 // warm-up there's no backing track, so the clock is just engine.now() — a
@@ -38,6 +39,9 @@ const GAP_S = 0.12;
 const FADE_S = 10;
 // A played piano key's guide line lingers this long before fading out.
 const REF_FADE_S = 8;
+// Drone loudness — a foreground reference you sing over, so noticeably louder
+// than the trainer's subliminal guide-tone default.
+const DRONE_LEVEL = 0.04;
 
 interface LiveHold {
   note: number;
@@ -126,6 +130,7 @@ export function useDetector(): {
   stop: () => void;
   clear: () => void;
   playKey: (midi: number) => void;
+  setDrone: (midi: number | null) => void;
 } {
   const engineRef = useRef<AudioEngine>(new AudioEngine());
   const rafId = useRef<number | null>(null);
@@ -159,6 +164,15 @@ export function useDetector(): {
   const playKey = useCallback((midi: number) => {
     engineRef.current.playKey(midi);
     buf.current.refs.push({ midi, startT: engineRef.current.now() });
+  }, []);
+
+  // Sustain (or silence) a continuous reference drone at the given tonic — sing
+  // scale degrees over it to hear each note against the base. Passing null stops
+  // it. The pitch loop already raises its loudness gate while the drone plays so
+  // the drone's own bleed isn't scored as singing.
+  const setDrone = useCallback((midi: number | null) => {
+    if (midi == null) engineRef.current.stopDrone();
+    else engineRef.current.startDrone(midiToFreq(midi), DRONE_LEVEL);
   }, []);
 
   const clear = useCallback(() => {
@@ -195,7 +209,7 @@ export function useDetector(): {
     return () => frameCbs.current.delete(cb);
   }, []);
 
-  return { ui, trailRef, dwellsRef, liveRef, refsRef, clockRef, onFrame, start, stop, clear, playKey };
+  return { ui, trailRef, dwellsRef, liveRef, refsRef, clockRef, onFrame, start, stop, clear, playKey, setDrone };
 }
 
 export const DETECTOR_FADE_S = FADE_S;

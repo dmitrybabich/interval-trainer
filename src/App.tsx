@@ -268,6 +268,7 @@ function AppInner() {
                 onFrame={detector.onFrame}
                 onStart={startDetectorMic}
                 onPlayKey={detector.playKey}
+                onDrone={detector.setDrone}
               />
             }
           />

@@ -100,57 +100,12 @@ function usePianoKeyboard(handlers: {
   }, [midiForKey, press, playRandom, replayLast, stepNote]);
 }
 
-export interface Piano {
-  keyOctave: number;
-  setKeyOctave: (octave: number) => void;
-  view: PianoView;
-  setView: (view: PianoView) => void;
-  // The MIDI span the keyboard renders: one octave, or the full vocal range.
-  loMidi: number;
-  hiMidi: number;
-  active: ReadonlySet<number>;
-  press: (midi: number) => void;
-  playRandom: () => void;
-  replayLast: () => void;
-}
-
-/**
- * Shared state + actions for the detector's piano. The octave picker is a fixed
- * C2–C5, independent of the singer's vocal range; the view toggle switches
- * between showing just that octave or the full range, and the shortcuts always
- * bind to the selected octave. Lives here (not in the keyboard component)
- * because the floating quick-keys over the graph drive the same actions, and it
- * owns the physical-keyboard handler: note letters, "/" random, Space replay.
- */
-export function usePiano({
-  rangeLo,
-  rangeHi,
-  onPlay,
-}: {
-  rangeLo: number;
-  rangeHi: number;
-  onPlay: (midi: number) => void;
-}): Piano {
-  const [keyOctave, setKeyOctaveState] = useState(() => loadKeyOctave() ?? DEFAULT_OCTAVE);
-  const setKeyOctave = useCallback((octave: number) => {
-    setKeyOctaveState(octave);
-    saveKeyOctave(octave);
-  }, []);
-
-  const [view, setViewState] = useState<PianoView>(() => loadPianoView() ?? "octave");
-  const setView = useCallback((next: PianoView) => {
-    setViewState(next);
-    savePianoView(next);
-  }, []);
-
+// Note actions bound to the selected octave's C (`base`): the flash-on-play set,
+// play, random-in-octave, replay-last, step-by-semitone, and letter→MIDI mapping.
+// `press` remembers the last note so replay/step have an anchor.
+function useNoteActions(base: number, onPlay: (midi: number) => void) {
   const [active, setActive] = useState<ReadonlySet<number>>(() => new Set());
-  // Most recent note played by any means (tap, key, random), so replay can find
-  // it. A ref — replaying doesn't need to re-render.
   const lastPlayed = useRef<number | null>(null);
-
-  const base = octaveBaseMidi(keyOctave);
-  // The visible keyboard: one octave (C..C, 13 keys) or the whole vocal range.
-  const [loMidi, hiMidi] = view === "range" ? [rangeLo, rangeHi] : [base, base + 12];
 
   const flash = useCallback((midi: number) => {
     setActive((cur) => new Set(cur).add(midi));
@@ -172,23 +127,17 @@ export function usePiano({
     [onPlay, flash],
   );
 
-  // Random note from the selected octave (C..B), regardless of view.
-  const playRandom = useCallback(() => {
-    press(randInt(base, base + 11));
-  }, [base, press]);
-
+  const playRandom = useCallback(() => press(randInt(base, base + 11)), [base, press]);
   const replayLast = useCallback(() => {
     if (lastPlayed.current != null) press(lastPlayed.current);
   }, [press]);
 
-  // Step ±1 semitone from the last note, staying inside the selected octave
-  // (C..B). With nothing played yet, the first step lands on that octave's C so
-  // arrow-walking always has a starting point.
+  // Step ±1 semitone from the last note, staying inside the octave (C..B). With
+  // nothing played yet, the first step lands on C so arrow-walking has a start.
   const stepNote = useCallback(
     (delta: number) => {
       const from = lastPlayed.current ?? base - delta;
-      const next = Math.min(base + 11, Math.max(base, from + delta));
-      press(next);
+      press(Math.min(base + 11, Math.max(base, from + delta)));
     },
     [base, press],
   );
@@ -201,7 +150,94 @@ export function usePiano({
     [base],
   );
 
-  usePianoKeyboard({ midiForKey, press, playRandom, replayLast, stepNote });
+  return { active, press, playRandom, replayLast, stepNote, midiForKey };
+}
 
-  return { keyOctave, setKeyOctave, view, setView, loMidi, hiMidi, active, press, playRandom, replayLast };
+// The sustained-tonic drone: sings the selected octave's C (`base`) while on,
+// retuning when the octave changes and stopping on unmount. Ephemeral (not
+// persisted) so a page load never blasts a tone unbidden.
+function useDrone(base: number, onDrone: (midi: number | null) => void) {
+  const [droneOn, setDroneOn] = useState(false);
+  const toggleDrone = useCallback(() => setDroneOn((v) => !v), []);
+  const droneMidi = droneOn ? base : null;
+  useEffect(() => {
+    onDrone(droneMidi);
+    return () => onDrone(null);
+  }, [droneMidi, onDrone]);
+  return { droneMidi, droneOn, toggleDrone };
+}
+
+export interface Piano {
+  keyOctave: number;
+  setKeyOctave: (octave: number) => void;
+  view: PianoView;
+  setView: (view: PianoView) => void;
+  // The MIDI span the keyboard renders: one octave, or the full vocal range.
+  loMidi: number;
+  hiMidi: number;
+  active: ReadonlySet<number>;
+  press: (midi: number) => void;
+  playRandom: () => void;
+  replayLast: () => void;
+  // The sustained-tonic drone: its pitch when on (the selected octave's C), else
+  // null. Toggle flips it.
+  droneMidi: number | null;
+  droneOn: boolean;
+  toggleDrone: () => void;
+}
+
+/**
+ * Shared state + actions for the detector's piano. The octave picker is a fixed
+ * C2–C5, independent of the singer's vocal range; the view toggle switches
+ * between showing just that octave or the full range, and the shortcuts always
+ * bind to the selected octave. Lives here (not in the keyboard component)
+ * because the floating quick-keys over the graph drive the same actions, and it
+ * owns the physical-keyboard handler: note letters, "/" random, Space replay.
+ */
+export function usePiano({
+  rangeLo,
+  rangeHi,
+  onPlay,
+  onDrone,
+}: {
+  rangeLo: number;
+  rangeHi: number;
+  onPlay: (midi: number) => void;
+  onDrone: (midi: number | null) => void;
+}): Piano {
+  const [keyOctave, setKeyOctaveState] = useState(() => loadKeyOctave() ?? DEFAULT_OCTAVE);
+  const setKeyOctave = useCallback((octave: number) => {
+    setKeyOctaveState(octave);
+    saveKeyOctave(octave);
+  }, []);
+
+  const [view, setViewState] = useState<PianoView>(() => loadPianoView() ?? "octave");
+  const setView = useCallback((next: PianoView) => {
+    setViewState(next);
+    savePianoView(next);
+  }, []);
+
+  const base = octaveBaseMidi(keyOctave);
+  // The visible keyboard: one octave (C..C, 13 keys) or the whole vocal range.
+  const [loMidi, hiMidi] = view === "range" ? [rangeLo, rangeHi] : [base, base + 12];
+
+  const { active, press, playRandom, replayLast, stepNote, midiForKey } = useNoteActions(base, onPlay);
+  usePianoKeyboard({ midiForKey, press, playRandom, replayLast, stepNote });
+  const { droneMidi, droneOn, toggleDrone } = useDrone(base, onDrone);
+
+  return {
+    keyOctave,
+    setKeyOctave,
+    view,
+    setView,
+    loMidi,
+    hiMidi,
+    active,
+    press,
+    playRandom,
+    replayLast,
+    droneMidi,
+    droneOn,
+    toggleDrone,
+  };
 }

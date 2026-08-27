@@ -390,17 +390,19 @@ export class AudioEngine {
   }
 
   /**
-   * Easy-mode guide tone: quiet continuous synthetic drone at `freq`. Does NOT
-   * deafen the mic — a loudness gate in the pitch loop separates voice from bleed.
+   * Continuous sine drone at `freq`. Used two ways: the trainer's subliminal
+   * guide tone (default level) and the detector's foreground practice drone (a
+   * louder `level`). Does NOT deafen the mic — a loudness gate in the pitch loop
+   * separates voice from bleed.
    */
-  startDrone(freq: number): void {
+  startDrone(freq: number, level = 0.0105): void {
     this.stopDrone();
     if (!this.audioCtx) return;
     logSound("DRONE_START", "guide tone on");
     const ac = this.audioCtx;
     const gain = ac.createGain();
     gain.gain.setValueAtTime(0, ac.currentTime);
-    gain.gain.linearRampToValueAtTime(0.0105, ac.currentTime + 0.15); // soft fade-in
+    gain.gain.linearRampToValueAtTime(level, ac.currentTime + 0.15); // soft fade-in
     const lp = ac.createBiquadFilter();
     lp.type = "lowpass";
     lp.frequency.value = Math.max(freq * 1.5, 300);

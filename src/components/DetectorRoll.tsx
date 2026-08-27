@@ -11,6 +11,8 @@ interface Props {
   dwellsRef: () => readonly Dwell[];
   liveRef: () => Dwell | null;
   refsRef: () => readonly KeyRef[];
+  // The sustained drone tonic, or null when the drone is off.
+  droneMidi: number | null;
   clockRef: () => number;
   onFrame: (cb: () => void) => () => void;
 }
@@ -162,6 +164,25 @@ function drawTrail(sc: Scene, trail: readonly PitchPoint[]): void {
   ctx.globalAlpha = 1;
 }
 
+// The sustained drone tonic: a solid full-width line at the base pitch, labelled,
+// so you can see the note each sung degree resonates against.
+function drawDrone(sc: Scene, droneMidi: number | null): void {
+  if (droneMidi == null) return;
+  const { ctx, col } = sc;
+  const y = sc.yFor(droneMidi);
+  ctx.strokeStyle = col.drone;
+  ctx.globalAlpha = 0.7;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(LEFT_GUTTER, y);
+  ctx.lineTo(sc.w, y);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = col.drone;
+  ctx.font = "700 11px 'Inter Variable', system-ui";
+  ctx.fillText(midiToName(droneMidi), LEFT_GUTTER + 4, y - 4);
+}
+
 function drawLiveDot(sc: Scene, trail: readonly PitchPoint[]): void {
   const latest = trail.at(-1);
   if (latest?.midi == null) return;
@@ -189,10 +210,12 @@ function drawLiveDot(sc: Scene, trail: readonly PitchPoint[]): void {
  * Sustained notes render as fading bars — the ones you held longest stay boldest
  * — while the raw sung pitch draws as a live trail on top. Redraws every frame.
  */
-export function DetectorRoll({ theme, loMidi, hiMidi, trailRef, dwellsRef, liveRef, refsRef, clockRef, onFrame }: Props) {
+export function DetectorRoll({ theme, loMidi, hiMidi, trailRef, dwellsRef, liveRef, refsRef, droneMidi, clockRef, onFrame }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rangeRef = useRef({ loMidi, hiMidi });
   rangeRef.current = { loMidi, hiMidi };
+  const droneRef = useRef(droneMidi);
+  droneRef.current = droneMidi;
   // The live axis, ratcheted open past the base range as you sing beyond it.
   // Reset whenever the base range prop changes (e.g. recalibration).
   const axisRef = useRef({ lo: loMidi - PITCH_PAD, hi: hiMidi + PITCH_PAD });
@@ -213,6 +236,7 @@ export function DetectorRoll({ theme, loMidi, hiMidi, trailRef, dwellsRef, liveR
       muted: cssHsl("--muted-foreground"),
       trail: cssHsl("--foreground"),
       ref: cssHsl("--good"),
+      drone: cssHsl("--near"),
       playhead: cssHslA("--primary", 0.5),
     };
 
@@ -257,6 +281,12 @@ export function DetectorRoll({ theme, loMidi, hiMidi, trailRef, dwellsRef, liveR
         sungLo = Math.min(sungLo, rf.midi);
         sungHi = Math.max(sungHi, rf.midi);
       }
+      // The drone tonic opens the axis too, so a low base stays visible.
+      const drone = droneRef.current;
+      if (drone != null) {
+        sungLo = Math.min(sungLo, drone);
+        sungHi = Math.max(sungHi, drone);
+      }
       const tgtLo = Math.min(r.loMidi - PITCH_PAD, Number.isFinite(sungLo) ? sungLo - PITCH_PAD : Infinity);
       const tgtHi = Math.max(r.hiMidi + PITCH_PAD, Number.isFinite(sungHi) ? sungHi + PITCH_PAD : -Infinity);
       if (tgtLo < ax.lo) ax.lo += (tgtLo - ax.lo) * AXIS_EASE;
@@ -283,6 +313,7 @@ export function DetectorRoll({ theme, loMidi, hiMidi, trailRef, dwellsRef, liveR
       };
 
       drawGrid(sc);
+      drawDrone(sc, droneRef.current);
       drawRefs(sc, refs);
       drawDwells(sc, dwells, live);
 

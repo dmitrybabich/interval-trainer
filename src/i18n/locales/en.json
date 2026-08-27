@@ -49,6 +49,7 @@
   "detector": {
     "random": "Random note",
     "replay": "Replay last note",
+    "drone": "Drone (sustained tonic)",
     "octave": "Octave & view",
     "octaveOnly": "Octave",
     "fullRange": "Range"
