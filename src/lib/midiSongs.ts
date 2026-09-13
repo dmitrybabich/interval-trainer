@@ -36,6 +36,11 @@ export async function deleteMidiSong(id: string): Promise<void> {
   await idbRequest(MIDI_SONGS_STORE, "readwrite", (store) => store.delete(id));
 }
 
+export async function renameMidiSong(id: string, name: string): Promise<void> {
+  const rec = await getMidiSong(id);
+  if (rec) await putMidiSong({ ...rec, name });
+}
+
 export async function listMidiSongs(): Promise<MidiSongMeta[]> {
   const all = await idbRequest<MidiSongRecord[]>(MIDI_SONGS_STORE, "readonly", (store) => store.getAll());
   return all

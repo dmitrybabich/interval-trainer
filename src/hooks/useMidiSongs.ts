@@ -6,12 +6,14 @@ import {
   type MidiSongMeta,
   newMidiSongId,
   putMidiSong,
+  renameMidiSong,
 } from "@/lib/midiSongs";
 
 export interface UseMidiSongs {
   songs: readonly MidiSongMeta[];
   add: (name: string, file: File, trackIndex: number) => Promise<string | null>;
   remove: (id: string) => Promise<void>;
+  rename: (id: string, name: string) => Promise<void>;
 }
 
 // The user's uploaded MIDI songs. The file's bytes + chosen melody-track index are
@@ -49,5 +51,13 @@ export function useMidiSongs(): UseMidiSongs {
     [refresh],
   );
 
-  return { songs, add, remove };
+  const rename = useCallback(
+    async (id: string, name: string): Promise<void> => {
+      await renameMidiSong(id, name.trim() || "Untitled");
+      refresh();
+    },
+    [refresh],
+  );
+
+  return { songs, add, remove, rename };
 }

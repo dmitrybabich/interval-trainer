@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 import { SettingsSheet } from "@/components/SettingsSheet";
 import { Button } from "@/components/ui/button";
@@ -67,6 +67,7 @@ export function Layout({ prefs, setPref, theme, onThemeChange, savedRange, onCal
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const activity = activityForPath(location.pathname);
@@ -76,14 +77,32 @@ export function Layout({ prefs, setPref, theme, onThemeChange, savedRange, onCal
     { value: "practice" as const, label: t("nav.practice") },
   ];
 
+  // The practice library's guided/free split lives in the URL (?tab=) so it can ride
+  // up here in the header next to the activity switcher instead of eating a row in
+  // the page. Only the library shows it — not the player or the other activities.
+  const onLibrary = location.pathname === "/practice";
+  const libTab = searchParams.get("tab") === "free" ? "free" : "guided";
+
   return (
     <div className="flex h-dvh flex-col">
-      <header className="mx-auto flex w-full max-w-none items-center justify-between gap-3 px-4 py-3">
-        {activity ? (
-          <Segmented value={activity} options={activityOptions} onValueChange={(a) => navigate(ACTIVITY_PATHS[a])} />
-        ) : (
-          <h1 className="text-lg font-semibold tracking-tight">{t("app.title")}</h1>
-        )}
+      <header className="mx-auto flex w-full max-w-none flex-wrap items-center justify-between gap-3 px-4 py-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          {activity ? (
+            <Segmented value={activity} options={activityOptions} onValueChange={(a) => navigate(ACTIVITY_PATHS[a])} />
+          ) : (
+            <h1 className="text-lg font-semibold tracking-tight">{t("app.title")}</h1>
+          )}
+          {onLibrary && (
+            <Segmented
+              value={libTab}
+              options={[
+                { value: "guided", label: t("practice.tabGuided") },
+                { value: "free", label: t("practice.tabFree") },
+              ]}
+              onValueChange={(v) => setSearchParams(v === "guided" ? {} : { tab: v }, { replace: true })}
+            />
+          )}
+        </div>
         <div className="flex shrink-0 items-center gap-0.5">
           <Tooltip>
             <TooltipTrigger asChild>

@@ -61,6 +61,7 @@ export class ExerciseTransport {
   private pausedAt = 0; // exercise-time when paused / stopped
   private origin = 0; // AudioContext time that maps to exercise-time 0
   private pauseAnchor = 0; // AudioContext time the current pause began, for the free-run scroll
+  private rate = 1; // playback speed: exercise-time advances `rate`× wall-time
 
   constructor(private readonly engine: AudioEngine) {}
 
@@ -81,10 +82,23 @@ export class ExerciseTransport {
     return this.playing;
   }
 
+  // Change playback speed. While playing, reschedule from the current position so
+  // the new tempo takes effect immediately without a pitch shift (piano notes just
+  // sustain longer/shorter).
+  setRate(rate: number): void {
+    if (rate <= 0 || rate === this.rate) return;
+    const pos = this.position();
+    this.rate = rate;
+    if (this.playing) {
+      this.engine.stopScheduled();
+      this.scheduleFrom(pos);
+    }
+  }
+
   // The scored position along the exercise: advances only while playing.
   position(): number {
     if (!this.playing) return this.pausedAt;
-    return Math.min(Math.max(this.engine.now() - this.origin, 0), this.durationS);
+    return Math.min(Math.max((this.engine.now() - this.origin) * this.rate, 0), this.durationS);
   }
 
   // The roll's scroll clock. While playing it tracks the exercise; while paused it
@@ -92,7 +106,7 @@ export class ExerciseTransport {
   // pitch still scrolls even though the backing (and scored position) sit still.
   scrollTime(): number {
     if (this.playing) return this.position();
-    return this.pausedAt + Math.max(0, this.engine.now() - this.pauseAnchor);
+    return this.pausedAt + Math.max(0, this.engine.now() - this.pauseAnchor) * this.rate;
   }
 
   // The frozen exercise position while paused (so the roll can pin notes there),
@@ -109,13 +123,13 @@ export class ExerciseTransport {
 
   private scheduleFrom(fromT: number): void {
     const when0 = this.engine.now() + SCHEDULE_LEAD_S;
-    this.origin = when0 - fromT;
+    this.origin = when0 - fromT / this.rate;
     for (const n of this.notes) {
       const end = n.t + n.dur;
       if (end <= fromT) continue;
-      const when = when0 + Math.max(0, n.t - fromT);
-      const dur = n.t >= fromT ? n.dur : end - fromT;
-      this.engine.scheduleNote(n.midi, when, dur, n.gain);
+      const when = when0 + Math.max(0, n.t - fromT) / this.rate;
+      const durExercise = (n.t >= fromT ? n.dur : end - fromT) / this.rate;
+      this.engine.scheduleNote(n.midi, when, durExercise, n.gain);
     }
     this.playing = true;
   }

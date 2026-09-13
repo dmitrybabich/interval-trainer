@@ -31,6 +31,7 @@ const INITIAL: PracticePlayerUi = {
 
 export interface PracticePlayerApi {
   ui: PracticePlayerUi;
+  rate: number;
   mediaRef: React.RefObject<HTMLVideoElement | HTMLAudioElement | null>;
   trailRef: () => readonly VoiceSample[];
   currentTimeRef: () => number;
@@ -39,6 +40,7 @@ export interface PracticePlayerApi {
   play: () => void;
   pause: () => void;
   seek: (sec: number) => void;
+  setRate: (rate: number) => void;
   toggleRecord: () => void;
 }
 
@@ -55,6 +57,9 @@ export function usePracticePlayer(
   onTake: (blob: Blob, durationS: number) => void,
 ): PracticePlayerApi {
   const [ui, setUi] = useState<PracticePlayerUi>(INITIAL);
+  const [rate, setRateState] = useState(1);
+  const rateRef = useRef(1);
+  rateRef.current = rate;
   const mediaRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null);
   const transportRef = useRef<ExerciseTransport | null>(null);
   const scorer = useRef(new ContourScorer());
@@ -114,13 +119,23 @@ export function usePracticePlayer(
     setUi((cur) => ({ ...INITIAL, ready: cur.ready }));
   }, [item, tolCents, anyOctave]);
 
+  // Apply the playback rate to whichever backend is active. Media preserves pitch by
+  // default (sing along slower without transposing); MIDI just sustains notes longer.
+  useEffect(() => {
+    if (isMidi) transportRef.current?.setRate(rate);
+    else if (mediaRef.current) mediaRef.current.playbackRate = rate;
+  }, [rate, isMidi, item]);
+
   // Media transport events → React state (midi state is driven from onTick).
   useEffect(() => {
     const el = mediaRef.current;
     if (!el || isMidi) return;
     const onPlay = () => setUi((cur) => ({ ...cur, playing: true }));
     const onPause = () => setUi((cur) => ({ ...cur, playing: false }));
-    const onMeta = () => setUi((cur) => ({ ...cur, duration: el.duration }));
+    const onMeta = () => {
+      el.playbackRate = rateRef.current;
+      setUi((cur) => ({ ...cur, duration: el.duration }));
+    };
     el.addEventListener("play", onPlay);
     el.addEventListener("pause", onPause);
     el.addEventListener("loadedmetadata", onMeta);
@@ -181,6 +196,8 @@ export function usePracticePlayer(
     [pitch],
   );
 
+  const setRate = useCallback((next: number) => setRateState(next), []);
+
   const toggleRecord = useCallback(() => {
     const engine = pitch.engineRef.current;
     if (recording.current) {
@@ -206,11 +223,13 @@ export function usePracticePlayer(
 
   return {
     ui,
+    rate,
     mediaRef,
     trailRef: pitch.trailRef,
     currentTimeRef: position,
     onFrame: pitch.onFrame,
     start,
+    setRate,
     play,
     pause,
     seek,

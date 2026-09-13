@@ -42,6 +42,10 @@ export async function getTrack(id: string): Promise<PracticeTrack | undefined> {
 export async function deleteTrack(id: string): Promise<void> {
   await idbRequest(PRACTICE_TRACKS_STORE, "readwrite", (store) => store.delete(id));
 }
+export async function renameTrack(id: string, name: string): Promise<void> {
+  const rec = await getTrack(id);
+  if (rec) await putTrack({ ...rec, name });
+}
 export async function listTracks(): Promise<PracticeTrackMeta[]> {
   const all = await idbRequest<PracticeTrack[]>(PRACTICE_TRACKS_STORE, "readonly", (store) => store.getAll());
   return all

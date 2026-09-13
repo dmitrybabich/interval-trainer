@@ -12,6 +12,7 @@ import {
   type PracticeTrackMeta,
   putTake,
   putTrack,
+  renameTrack,
 } from "@/lib/practice";
 
 // The library of backing tracks.
@@ -19,6 +20,7 @@ export function usePracticeTracks(): {
   tracks: readonly PracticeTrackMeta[];
   add: (file: File) => Promise<string | null>;
   remove: (id: string) => Promise<void>;
+  rename: (id: string, name: string) => Promise<void>;
 } {
   const [tracks, setTracks] = useState<readonly PracticeTrackMeta[]>([]);
   const refresh = useCallback(() => {
@@ -49,7 +51,15 @@ export function usePracticeTracks(): {
     [refresh],
   );
 
-  return { tracks, add, remove };
+  const rename = useCallback(
+    async (id: string, name: string): Promise<void> => {
+      await renameTrack(id, name.trim() || "Untitled");
+      refresh();
+    },
+    [refresh],
+  );
+
+  return { tracks, add, remove, rename };
 }
 
 // The takes recorded over one track (full records, so the screen can play them).

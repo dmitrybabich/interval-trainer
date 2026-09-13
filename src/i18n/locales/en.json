@@ -18,10 +18,18 @@
     "yourTracks": "Your recordings",
     "songs": "Songs",
     "songsHint": "Upload & sing songs (MIDI is scored)",
-    "addTrack": "Add a backing track (audio or video)",
+    "tabGuided": "Guided",
+    "tabFree": "Free",
+    "add": "Add MIDI, audio, or video",
+    "chooseTrack": "Choose the melody track",
+    "namePlaceholder": "Name",
+    "addButton": "Add",
     "playPause": "Play / pause (Space)",
     "record": "Record (R)",
     "recording": "Recording {{time}}",
+    "speed": "Playback speed",
+    "rename": "Rename",
+    "takesPanel": "Takes",
     "takes": "Your takes",
     "noTakes": "Hit record and sing along — your takes show up here.",
     "shortcuts": "Space play/pause · R record · ← → seek 5s"
@@ -56,11 +64,7 @@
     "cardDesc": "Sing along to the track — watch your pitch ride the line.",
     "headphones": "Use headphones",
     "play": "Play",
-    "pause": "Pause",
-    "tracks": {
-      "track1": "Track 1",
-      "track2": "Track 2"
-    }
+    "pause": "Pause"
   },
   "songs": {
     "title": "Sing along",
