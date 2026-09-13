@@ -1,4 +1,4 @@
-import { ArrowLeft, Circle, FileMusic, ListMusic, Music, Pause, Pencil, Play, Plus, Square, Target, Trash2, X } from "lucide-react";
+import { ArrowLeft, Circle, FileMusic, ListMusic, Music, Pause, Pencil, Play, Plus, Square, Target, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -15,9 +15,8 @@ import { usePrefs } from "@/hooks/usePrefs";
 import { useTheme } from "@/hooks/useTheme";
 import { EXERCISES } from "@/lib/exercises";
 import { assignFingering } from "@/lib/fretboard";
-import { type MidiTrackInfo, parseMidiTracks } from "@/lib/midiSong";
 import type { PracticeTake } from "@/lib/practice";
-import { type ResolvedItem, resolveItem } from "@/lib/practiceItems";
+import { type MidiTrackChoice, type ResolvedItem, resolveItem } from "@/lib/practiceItems";
 import { cn } from "@/lib/utils";
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5] as const;
@@ -73,92 +72,40 @@ function ItemRow({
   );
 }
 
-interface PendingMidi {
-  file: File;
-  tracks: readonly MidiTrackInfo[];
-  trackIndex: number | null;
-  name: string;
-}
-
 function isMidiFile(file: File): boolean {
   return /\.midi?$/i.test(file.name) || file.type === "audio/midi";
 }
 
-// One upload for everything: a MIDI drops into the track picker (guided/scored), any
-// audio or video is added straight away (free/record-only). The tabs only split the
-// list — there's a single add flow, routed by file type.
-function AddItem({
-  onAddAudio,
-  onAddMidi,
-}: {
-  onAddAudio: (file: File) => void;
-  onAddMidi: (name: string, file: File, trackIndex: number) => void;
-}) {
+// One upload for everything, routed by file type: a MIDI is imported whole (scored,
+// tracks picked later in the player), any audio or video is added as-is (record-only).
+// Accepts a click or a drag-and-drop. The tabs only split the list.
+function AddItem({ onAddAudio, onAddMidi }: { onAddAudio: (file: File) => void; onAddMidi: (file: File) => void }) {
   const { t } = useTranslation();
-  const [pending, setPending] = useState<PendingMidi | null>(null);
+  const [dragging, setDragging] = useState(false);
 
-  const pick = async (file: File | null) => {
+  const pick = (file: File | null) => {
     if (!file) return;
-    if (!isMidiFile(file)) {
-      onAddAudio(file);
-      return;
-    }
-    try {
-      const parsed = parseMidiTracks(await file.arrayBuffer());
-      setPending({ file, tracks: parsed.tracks, trackIndex: parsed.tracks[0]?.index ?? null, name: file.name.replace(/\.midi?$/i, "") });
-    } catch {
-      setPending(null);
-    }
+    if (isMidiFile(file)) onAddMidi(file);
+    else onAddAudio(file);
   };
-
-  const submit = () => {
-    if (pending?.trackIndex == null) return;
-    onAddMidi(pending.name, pending.file, pending.trackIndex);
-    setPending(null);
-  };
-
-  if (pending) {
-    return (
-      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4">
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <FileMusic className="size-4" />
-          {t("practice.chooseTrack")}
-          <button type="button" onClick={() => setPending(null)} className="ml-auto text-muted-foreground hover:text-foreground">
-            <X className="size-4" />
-          </button>
-        </div>
-        <div className="flex max-h-40 flex-col gap-1 overflow-y-auto">
-          {pending.tracks.map((tr) => (
-            <label key={tr.index} className="flex cursor-pointer items-center gap-2 text-xs">
-              <input
-                type="radio"
-                name="miditrack"
-                checked={pending.trackIndex === tr.index}
-                onChange={() => setPending((cur) => (cur ? { ...cur, trackIndex: tr.index } : cur))}
-                className="accent-primary"
-              />
-              <span className="truncate">
-                {tr.label} · {tr.noteCount} notes
-              </span>
-            </label>
-          ))}
-        </div>
-        <input
-          type="text"
-          value={pending.name}
-          onChange={(e) => setPending((cur) => (cur ? { ...cur, name: e.target.value } : cur))}
-          placeholder={t("practice.namePlaceholder")}
-          className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-        />
-        <Button onClick={submit} className="self-start">
-          {t("practice.addButton")}
-        </Button>
-      </div>
-    );
-  }
 
   return (
-    <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-border p-3 text-sm font-medium text-muted-foreground hover:bg-accent">
+    <label
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDragging(true);
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragging(false);
+        pick(e.dataTransfer.files?.[0] ?? null);
+      }}
+      className={cn(
+        "flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed p-3 text-sm font-medium text-muted-foreground",
+        dragging ? "border-primary bg-accent" : "border-border hover:bg-accent",
+      )}
+    >
       <Plus className="size-4" />
       {t("practice.add")}
       <input
@@ -166,7 +113,7 @@ function AddItem({
         accept=".mid,.midi,audio/*,video/*"
         className="hidden"
         onChange={(e) => {
-          void pick(e.target.files?.[0] ?? null);
+          pick(e.target.files?.[0] ?? null);
           e.target.value = "";
         }}
       />
@@ -195,7 +142,7 @@ export function PracticeLibrary() {
     <div className="mx-auto flex size-full max-w-none flex-col gap-4">
       <AddItem
         onAddAudio={(file) => void tracks.add(file).then((id) => id && navigate(`/practice/${id}`))}
-        onAddMidi={(name, file, track) => void midi.add(name, file, track).then((id) => id && navigate(`/practice/${id}`))}
+        onAddMidi={(file) => void midi.add(file.name.replace(/\.midi?$/i, ""), file).then((id) => id && navigate(`/practice/${id}`))}
       />
 
       <div className="flex flex-col gap-2">
@@ -238,6 +185,48 @@ function TakeRow({ take, url, onDelete }: { take: PracticeTake; url: string; onD
   );
 }
 
+// Persisted MIDI track selection: a checkbox per track for what sounds, and a single
+// Score toggle for the track judged/shown as the melody (click again to score none).
+function TracksPanel({ choice, onChange }: { choice: MidiTrackChoice; onChange: (playTracks: number[], melodyTrack: number | null) => void }) {
+  const { t } = useTranslation();
+  const play = new Set(choice.playTracks);
+  const togglePlay = (index: number) => {
+    const next = new Set(play);
+    if (next.has(index)) next.delete(index);
+    else next.add(index);
+    onChange([...next].toSorted((a, b) => a - b), choice.melodyTrack);
+  };
+  const toggleMelody = (index: number) => onChange([...choice.playTracks], choice.melodyTrack === index ? null : index);
+
+  return (
+    <aside className="flex w-72 shrink-0 flex-col gap-1 overflow-y-auto rounded-2xl border border-border bg-card p-2">
+      <div className="px-1 pb-1 text-xs font-semibold text-muted-foreground">{t("practice.tracksPanel")}</div>
+      {choice.tracks.map((tr) => (
+        <div key={tr.index} className="flex items-center gap-2 rounded-lg px-2 py-1 text-xs hover:bg-accent">
+          <input
+            type="checkbox"
+            checked={play.has(tr.index)}
+            onChange={() => togglePlay(tr.index)}
+            className="accent-primary"
+            title={t("practice.playTrack")}
+          />
+          <button
+            type="button"
+            onClick={() => toggleMelody(tr.index)}
+            title={t("practice.scoreTrack")}
+            className={cn("shrink-0", choice.melodyTrack === tr.index ? "text-primary" : "text-muted-foreground/40 hover:text-muted-foreground")}
+          >
+            <Target className="size-4" />
+          </button>
+          <span className="min-w-0 flex-1 truncate">
+            {tr.label} · {tr.noteCount}
+          </span>
+        </div>
+      ))}
+    </aside>
+  );
+}
+
 export function PracticeItemPlayer() {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -245,6 +234,7 @@ export function PracticeItemPlayer() {
   const { prefs } = usePrefs();
   const { itemId = "" } = useParams();
   const [item, setItem] = useState<ResolvedItem | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -255,11 +245,15 @@ export function PracticeItemPlayer() {
     return () => {
       cancelled = true;
     };
-  }, [itemId]);
+  }, [itemId, reloadKey]);
 
+  const midiSongs = useMidiSongs();
   const takes = usePracticeTakes(itemId);
-  const [takesOpen, setTakesOpen] = useState(false);
+  const [panel, setPanel] = useState<"none" | "takes" | "tracks">("none");
   const [view, setView] = useState<"bars" | "fretboard">("bars");
+
+  const setSelection = (playTracks: number[], melodyTrack: number | null) =>
+    void midiSongs.setSelection(itemId, playTracks, melodyTrack).then(() => setReloadKey((prev) => prev + 1));
   const fingering = useMemo(() => (item?.refNotes ? assignFingering(item.refNotes) : []), [item]);
   const player = usePracticePlayer(
     item,
@@ -319,10 +313,21 @@ export function PracticeItemPlayer() {
               : t("songs.inTune", { pct: Math.round(inTunePct * 100), bias: bias > 0 ? `+${bias}¢` : `${bias}¢` })}
           </div>
         )}
+        {item?.midi && (
+          <Button
+            variant={panel === "tracks" ? "secondary" : "ghost"}
+            size="icon"
+            onClick={() => setPanel((p) => (p === "tracks" ? "none" : "tracks"))}
+            className="text-muted-foreground"
+            title={t("practice.tracksPanel")}
+          >
+            <FileMusic className="size-5" />
+          </Button>
+        )}
         <Button
-          variant={takesOpen ? "secondary" : "ghost"}
+          variant={panel === "takes" ? "secondary" : "ghost"}
           size="icon"
-          onClick={() => setTakesOpen((o) => !o)}
+          onClick={() => setPanel((p) => (p === "takes" ? "none" : "takes"))}
           className="relative text-muted-foreground"
           title={t("practice.takesPanel")}
         >
@@ -367,7 +372,11 @@ export function PracticeItemPlayer() {
           </MicGate>
         </div>
 
-        {takesOpen && (
+        {panel === "tracks" && item?.midi && (
+          <TracksPanel choice={item.midi} onChange={setSelection} />
+        )}
+
+        {panel === "takes" && (
           <aside className="flex w-64 shrink-0 flex-col gap-1 overflow-y-auto rounded-2xl border border-border bg-card p-2">
             <div className="px-1 pb-1 text-xs font-semibold text-muted-foreground">{t("practice.takesPanel")}</div>
             {takes.takes.length === 0 ? (

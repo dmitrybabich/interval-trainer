@@ -32,6 +32,9 @@
     "takesPanel": "Takes",
     "viewBars": "Bars",
     "viewFretboard": "Fretboard",
+    "tracksPanel": "Tracks",
+    "playTrack": "Play this track",
+    "scoreTrack": "Score against this track",
     "takes": "Your takes",
     "noTakes": "Hit record and sing along — your takes show up here.",
     "shortcuts": "Space play/pause · R record · ← → seek 5s"

@@ -7,6 +7,11 @@ import { loadExercise, type ParsedExercise } from "@/lib/exercises";
 
 // A little lead so the first scheduled notes don't land in the past.
 const SCHEDULE_LEAD_S = 0.15;
+// Look-ahead scheduling: only queue notes a short way past the playhead and top up on
+// a timer. Scheduling a whole multi-track song at once floods the audio graph with
+// thousands of voices and stalls AudioContext.currentTime (the transport clock).
+const LOOKAHEAD_S = 1;
+const SCHED_INTERVAL_MS = 250;
 
 export interface ExerciseUi {
   ready: boolean; // mic granted and engine live
@@ -62,16 +67,24 @@ export class ExerciseTransport {
   private origin = 0; // AudioContext time that maps to exercise-time 0
   private pauseAnchor = 0; // AudioContext time the current pause began, for the free-run scroll
   private rate = 1; // playback speed: exercise-time advances `rate`× wall-time
+  private nextIdx = 0; // next note (in time order) still to be scheduled
+  private schedTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(private readonly engine: AudioEngine) {}
 
   load(data: Playable | null): void {
+    this.clearSched();
     this.engine.stopScheduled();
-    this.notes = data?.sound ?? [];
+    this.notes = (data?.sound ?? []).toSorted((a, b) => a.t - b.t);
     this.durationS = data?.duration ?? 0;
     this.playing = false;
     this.pausedAt = 0;
     this.pauseAnchor = this.engine.now();
+  }
+
+  private clearSched(): void {
+    if (this.schedTimer !== null) clearInterval(this.schedTimer);
+    this.schedTimer = null;
   }
 
   get duration(): number {
@@ -90,6 +103,7 @@ export class ExerciseTransport {
     const pos = this.position();
     this.rate = rate;
     if (this.playing) {
+      this.clearSched();
       this.engine.stopScheduled();
       this.scheduleFrom(pos);
     }
@@ -122,16 +136,32 @@ export class ExerciseTransport {
   }
 
   private scheduleFrom(fromT: number): void {
-    const when0 = this.engine.now() + SCHEDULE_LEAD_S;
-    this.origin = when0 - fromT / this.rate;
-    for (const n of this.notes) {
-      const end = n.t + n.dur;
-      if (end <= fromT) continue;
-      const when = when0 + Math.max(0, n.t - fromT) / this.rate;
-      const durExercise = (n.t >= fromT ? n.dur : end - fromT) / this.rate;
-      this.engine.scheduleNote(n.midi, when, durExercise, n.gain);
-    }
+    this.origin = this.engine.now() + SCHEDULE_LEAD_S - fromT / this.rate;
+    this.nextIdx = Math.max(
+      0,
+      this.notes.findIndex((n) => n.t + n.dur > fromT),
+    );
+    if (!this.notes.some((n) => n.t + n.dur > fromT)) this.nextIdx = this.notes.length;
     this.playing = true;
+    this.pump();
+    this.schedTimer = setInterval(() => this.pump(), SCHED_INTERVAL_MS);
+  }
+
+  // Queue every note that starts within the look-ahead window, then stop once they're
+  // all out — keeps only ~1s of voices live so the audio graph never floods.
+  private pump(): void {
+    if (!this.playing) return;
+    const pos = this.position();
+    const horizon = pos + LOOKAHEAD_S;
+    while (this.nextIdx < this.notes.length) {
+      const n = this.notes[this.nextIdx];
+      if (!n || n.t > horizon) break;
+      const when = Math.max(this.engine.now(), this.origin + n.t / this.rate);
+      const remaining = n.t + n.dur - Math.max(n.t, pos); // trim a note already underway
+      if (remaining > 0) this.engine.scheduleNote(n.midi, when, remaining / this.rate, n.gain);
+      this.nextIdx++;
+    }
+    if (this.nextIdx >= this.notes.length) this.clearSched();
   }
 
   async play(): Promise<void> {
@@ -145,12 +175,14 @@ export class ExerciseTransport {
     this.pausedAt = this.position();
     this.playing = false;
     this.pauseAnchor = this.engine.now();
+    this.clearSched();
     this.engine.stopScheduled();
   }
 
   seek(sec: number): number {
     const clamped = Math.min(Math.max(sec, 0), this.durationS);
     const wasPlaying = this.playing;
+    this.clearSched();
     this.engine.stopScheduled();
     this.pausedAt = clamped;
     if (wasPlaying) this.scheduleFrom(clamped);
@@ -160,6 +192,7 @@ export class ExerciseTransport {
 
   // Called when playback runs off the end: stop and rewind to the start.
   rewind(): void {
+    this.clearSched();
     this.engine.stopScheduled();
     this.playing = false;
     this.pausedAt = 0;

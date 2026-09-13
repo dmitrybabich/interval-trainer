@@ -88,11 +88,13 @@ export function usePracticePlayer(
     // Only score while the backing is actually playing — a paused transport must not
     // keep folding the singer's idle mic noise into the running score.
     if (sample && playing.current) scorer.current.record(sample);
+    // Idle: don't churn React state every frame while nothing is playing.
+    if (!playing.current && !recording.current) return;
     const nowMs = performance.now();
     if (nowMs - lastTs.current < SCORE_UI_MS) return;
     lastTs.current = nowMs;
     // MIDI transport runs off the audio clock — detect its end here; media fires 'ended'.
-    if (isMidiRef.current && transportRef.current?.isPlaying() && position() >= duration()) {
+    if (isMidiRef.current && transportRef.current?.isPlaying() && duration() > 0 && position() >= duration()) {
       transportRef.current.rewind();
       setUi((cur) => ({ ...cur, playing: false, currentTime: 0 }));
       return;
@@ -170,7 +172,10 @@ export function usePracticePlayer(
 
   const play = useCallback(() => {
     if (isMidiRef.current) {
-      void transportRef.current?.play().then(() => setUi((cur) => ({ ...cur, playing: true })));
+      void transportRef.current?.play().then(() => {
+        setUi((cur) => ({ ...cur, playing: true }));
+        return undefined;
+      });
     } else {
       void mediaRef.current?.play();
     }

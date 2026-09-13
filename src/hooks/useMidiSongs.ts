@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { parseMidiTracks } from "@/lib/midiSong";
 import {
   deleteMidiSong,
   listMidiSongs,
@@ -7,13 +8,15 @@ import {
   newMidiSongId,
   putMidiSong,
   renameMidiSong,
+  setMidiSelection,
 } from "@/lib/midiSongs";
 
 export interface UseMidiSongs {
   songs: readonly MidiSongMeta[];
-  add: (name: string, file: File, trackIndex: number) => Promise<string | null>;
+  add: (name: string, file: File) => Promise<string | null>;
   remove: (id: string) => Promise<void>;
   rename: (id: string, name: string) => Promise<void>;
+  setSelection: (id: string, playTracks: number[], melodyTrack: number | null) => Promise<void>;
 }
 
 // The user's uploaded MIDI songs. The file's bytes + chosen melody-track index are
@@ -30,10 +33,20 @@ export function useMidiSongs(): UseMidiSongs {
   useEffect(refresh, [refresh]);
 
   const add = useCallback(
-    async (name: string, file: File, trackIndex: number): Promise<string | null> => {
+    async (name: string, file: File): Promise<string | null> => {
       try {
         const id = newMidiSongId();
-        await putMidiSong({ id, name: name.trim() || "Untitled", midi: file, trackIndex, createdAt: Date.now() });
+        // Import the whole file: play every note-bearing track, score the first.
+        const { tracks } = parseMidiTracks(await file.arrayBuffer());
+        const playTracks = tracks.map((tr) => tr.index);
+        await putMidiSong({
+          id,
+          name: name.trim() || "Untitled",
+          midi: file,
+          playTracks,
+          melodyTrack: playTracks[0] ?? null,
+          createdAt: Date.now(),
+        });
         refresh();
         return id;
       } catch {
@@ -59,5 +72,13 @@ export function useMidiSongs(): UseMidiSongs {
     [refresh],
   );
 
-  return { songs, add, remove, rename };
+  const setSelection = useCallback(
+    async (id: string, playTracks: number[], melodyTrack: number | null): Promise<void> => {
+      await setMidiSelection(id, playTracks, melodyTrack);
+      refresh();
+    },
+    [refresh],
+  );
+
+  return { songs, add, remove, rename, setSelection };
 }

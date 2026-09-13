@@ -44,36 +44,46 @@ export function parseMidiTracks(bytes: ArrayBuffer): MidiTracks {
   return { tracks, duration: midi.duration };
 }
 
+export interface MidiSelection {
+  playTracks: readonly number[]; // track indices to sound through the piano
+  melodyTrack: number | null; // track scored/shown as the melody, or null for none
+}
+
 export interface MidiSongData {
-  melody: readonly RefNote[]; // the chosen track — reference for scoring/ribbon
-  backing: readonly PlayNote[]; // every track, played through the piano
+  melody: readonly RefNote[]; // the scoring/ribbon track (empty when melodyTrack is null)
+  backing: readonly PlayNote[]; // the selected tracks, played through the piano
   loMidi: number;
   hiMidi: number;
   duration: number;
 }
 
-// Build playable data for a MIDI song: the chosen track is the melody (louder in the
-// mix and the scoring reference); all tracks play as the backing arrangement.
-export function buildMidiSong(bytes: ArrayBuffer, trackIndex: number): MidiSongData {
+// Build playable data for a MIDI song from the track selection: the played tracks
+// form the backing arrangement (the melody track louder), and the melody track is the
+// scoring/ribbon reference.
+export function buildMidiSong(bytes: ArrayBuffer, sel: MidiSelection): MidiSongData {
   const midi = new Midi(bytes);
+  const played = new Set(sel.playTracks);
   const melody: RefNote[] = [];
   const backing: PlayNote[] = [];
   midi.tracks.forEach((tr, index) => {
-    const isMelody = index === trackIndex;
+    const isMelody = index === sel.melodyTrack;
     for (const n of tr.notes) {
       const note: RefNote = { t: n.time, midi: n.midi, dur: n.duration };
       if (isMelody) melody.push(note);
-      backing.push({ ...note, gain: isMelody ? MELODY_GAIN : BACKING_GAIN });
+      if (played.has(index)) backing.push({ ...note, gain: isMelody ? MELODY_GAIN : BACKING_GAIN });
     }
   });
-  const pitches = melody.map((n) => n.midi);
+  const pitches = (melody.length > 0 ? melody : backing).map((n) => n.midi);
   const lo = pitches.length > 0 ? Math.min(...pitches) : 60;
   const hi = pitches.length > 0 ? Math.max(...pitches) : 72;
+  // midi.duration can be 0 for some files (it comes from the header, not the notes),
+  // which makes the transport think it ended at t=0. Fall back to the last note-off.
+  const notesEnd = backing.reduce((max, n) => Math.max(max, n.t + n.dur), 0);
   return {
     melody: melody.toSorted((a, b) => a.t - b.t),
     backing: backing.toSorted((a, b) => a.t - b.t),
     loMidi: lo,
     hiMidi: hi === lo ? lo + FALLBACK_SPAN : hi,
-    duration: midi.duration,
+    duration: Math.max(midi.duration || 0, notesEnd),
   };
 }

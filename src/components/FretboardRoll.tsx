@@ -94,22 +94,31 @@ export function FretboardRoll({ notes, theme, currentTimeRef, onFrame }: Props) 
       ctx.lineTo(playX, h);
       ctx.stroke();
 
-      // Note boxes with fret numbers.
-      const boxH = Math.min(rowGap * 0.8, 22);
+      // Each note: a thin bar spanning its duration + a fret-number disc pinned at its
+      // start. The disc (not a full-width box) keeps repeated/adjacent notes legible —
+      // otherwise back-to-back frets like "2 2" run together and read as "22".
+      const r = Math.min(rowGap * 0.42, 12);
+      ctx.textAlign = "center";
+      ctx.lineCap = "round";
       for (const n of list) {
         if (n.t + n.dur < winStart || n.t > winEnd) continue;
         const x0 = xFor(n.t);
         const x1 = xFor(n.t + n.dur);
-        const bw = Math.max(boxH, x1 - x0);
         const y = yFor(n.string);
         const active = now >= n.t && now < n.t + n.dur;
-        ctx.fillStyle = active ? col.active : col.box;
+        const fill = active ? col.active : col.box;
+        ctx.strokeStyle = fill;
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.roundRect(x0, y - boxH / 2, bw, boxH, 5);
+        ctx.moveTo(x0, y);
+        ctx.lineTo(Math.max(x1, x0 + 1), y);
+        ctx.stroke();
+        ctx.fillStyle = fill;
+        ctx.beginPath();
+        ctx.arc(x0, y, r, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = active ? col.activeText : col.boxText;
-        ctx.textAlign = "center";
-        ctx.fillText(String(n.fret), x0 + Math.min(bw, boxH) / 2, y);
+        ctx.fillText(String(n.fret), x0, y);
       }
     };
 

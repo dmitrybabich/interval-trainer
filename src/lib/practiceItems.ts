@@ -2,7 +2,7 @@ import type { RefNote } from "@/components/WarmupRoll";
 import { i18n } from "@/i18n";
 import type { SungSample } from "@/lib/attempts";
 import { loadExercise, type PlayNote } from "@/lib/exercises";
-import { buildMidiSong } from "@/lib/midiSong";
+import { buildMidiSong, type MidiTrackInfo, parseMidiTracks } from "@/lib/midiSong";
 import { getMidiSong, isMidiSongId } from "@/lib/midiSongs";
 import { getTrack } from "@/lib/practice";
 import { notesToContour } from "@/lib/referenceContour";
@@ -19,12 +19,21 @@ export type Backing =
   | { kind: "media"; mediaType: "audio" | "video"; url?: string; blob?: Blob }
   | { kind: "midi"; sound: readonly PlayNote[]; duration: number };
 
+// Track picker state for a MIDI song — present only on uploaded MIDI items, so the
+// player can show the play/melody selection panel.
+export interface MidiTrackChoice {
+  tracks: readonly MidiTrackInfo[];
+  playTracks: readonly number[];
+  melodyTrack: number | null;
+}
+
 export interface ResolvedItem {
   id: string;
   name: string;
   backing: Backing;
   reference: readonly SungSample[] | null; // contour for scoring
   refNotes: readonly RefNote[] | null; // melody notes for the bar roll (note-based items)
+  midi?: MidiTrackChoice; // present for uploaded MIDI songs
   loMidi: number;
   hiMidi: number;
 }
@@ -81,13 +90,17 @@ export async function resolveItem(rawId: string): Promise<ResolvedItem | null> {
   if (isMidiSongId(rawId)) {
     const song = await getMidiSong(rawId);
     if (!song) return null;
-    const built = buildMidiSong(await song.midi.arrayBuffer(), song.trackIndex);
+    const bytes = await song.midi.arrayBuffer();
+    const sel = { playTracks: song.playTracks, melodyTrack: song.melodyTrack };
+    const built = buildMidiSong(bytes, sel);
+    const scored = song.melodyTrack != null;
     return {
       id: rawId,
       name: song.name,
       backing: { kind: "midi", sound: built.backing, duration: built.duration },
-      reference: notesToContour(built.melody),
-      refNotes: built.melody,
+      reference: scored ? notesToContour(built.melody) : null,
+      refNotes: scored ? built.melody : null,
+      midi: { tracks: parseMidiTracks(bytes).tracks, playTracks: song.playTracks, melodyTrack: song.melodyTrack },
       loMidi: built.loMidi,
       hiMidi: built.hiMidi,
     };

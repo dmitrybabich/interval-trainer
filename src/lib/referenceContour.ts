@@ -10,10 +10,15 @@ import { freqToMidiFloat } from "@/lib/music";
 // pitch), so note-based songs (built-ins, old uploads) score/render on the same
 // contour path as pitchy-extracted references.
 const CONTOUR_STEP_S = 0.05;
+// Guard against pathological MIDI (a note with no note-off can carry a non-finite or
+// enormous duration); without a cap the flatten loop would hang the main thread.
+const MAX_STEPS_PER_NOTE = 4000; // 200s at the step — far beyond any real note
 export function notesToContour(notes: readonly RefNote[]): SungSample[] {
   const points: SungSample[] = [];
   for (const n of notes) {
-    for (let t = n.t; t < n.t + n.dur; t += CONTOUR_STEP_S) points.push({ t, midi: n.midi });
+    const dur = Number.isFinite(n.dur) ? n.dur : 0;
+    const steps = Math.min(Math.max(1, Math.ceil(dur / CONTOUR_STEP_S)), MAX_STEPS_PER_NOTE);
+    for (let step = 0; step < steps; step++) points.push({ t: n.t + step * CONTOUR_STEP_S, midi: n.midi });
   }
   return points.toSorted((a, b) => a.t - b.t);
 }
