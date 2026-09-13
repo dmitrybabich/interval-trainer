@@ -3,8 +3,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
+import { FretboardRoll } from "@/components/FretboardRoll";
 import { MicGate } from "@/components/MicGate";
 import { Button } from "@/components/ui/button";
+import { Segmented } from "@/components/ui/segmented";
 import { WarmupRoll } from "@/components/WarmupRoll";
 import { useMidiSongs } from "@/hooks/useMidiSongs";
 import { usePracticeTakes, usePracticeTracks } from "@/hooks/usePractice";
@@ -12,7 +14,8 @@ import { usePracticePlayer } from "@/hooks/usePracticePlayer";
 import { usePrefs } from "@/hooks/usePrefs";
 import { useTheme } from "@/hooks/useTheme";
 import { EXERCISES } from "@/lib/exercises";
-import { type MidiTrackInfo,parseMidiTracks } from "@/lib/midiSong";
+import { assignFingering } from "@/lib/fretboard";
+import { type MidiTrackInfo, parseMidiTracks } from "@/lib/midiSong";
 import type { PracticeTake } from "@/lib/practice";
 import { type ResolvedItem, resolveItem } from "@/lib/practiceItems";
 import { cn } from "@/lib/utils";
@@ -256,6 +259,8 @@ export function PracticeItemPlayer() {
 
   const takes = usePracticeTakes(itemId);
   const [takesOpen, setTakesOpen] = useState(false);
+  const [view, setView] = useState<"bars" | "fretboard">("bars");
+  const fingering = useMemo(() => (item?.refNotes ? assignFingering(item.refNotes) : []), [item]);
   const player = usePracticePlayer(
     item,
     Number(prefs.tol),
@@ -284,6 +289,8 @@ export function PracticeItemPlayer() {
 
   const isVideo = item?.backing.kind === "media" && item.backing.mediaType === "video";
   const scored = item?.reference != null;
+  const hasFretboard = (item?.refNotes?.length ?? 0) > 0;
+  const showFretboard = hasFretboard && view === "fretboard";
   const { inTunePct, biasCents, frames } = player.ui.score;
   const bias = Math.round(biasCents);
 
@@ -294,6 +301,16 @@ export function PracticeItemPlayer() {
           <ArrowLeft className="size-5" />
         </Button>
         <div className="min-w-0 flex-1 truncate text-sm font-semibold">{item?.name ?? "…"}</div>
+        {hasFretboard && (
+          <Segmented
+            value={view}
+            options={[
+              { value: "bars", label: t("practice.viewBars") },
+              { value: "fretboard", label: t("practice.viewFretboard") },
+            ]}
+            onValueChange={setView}
+          />
+        )}
         {scored && (
           <div className="flex items-center gap-1 text-xs font-medium tabular-nums text-muted-foreground">
             <Target className="size-4" />
@@ -331,17 +348,21 @@ export function PracticeItemPlayer() {
                 <audio ref={player.mediaRef as React.RefObject<HTMLAudioElement>} src={mediaUrl ?? undefined} />
               ))}
             <div className={cn(isVideo ? "h-40" : "h-full")}>
-              <WarmupRoll
-                notes={item?.refNotes ?? []}
-                loMidi={item?.loMidi ?? 48}
-                hiMidi={item?.hiMidi ?? 72}
-                tolCents={Number(prefs.tol)}
-                theme={theme}
-                trailRef={player.trailRef}
-                currentTimeRef={player.currentTimeRef}
-                onFrame={player.onFrame}
-                anyOctave={prefs.anyOctave === "on"}
-              />
+              {showFretboard ? (
+                <FretboardRoll notes={fingering} theme={theme} currentTimeRef={player.currentTimeRef} onFrame={player.onFrame} />
+              ) : (
+                <WarmupRoll
+                  notes={item?.refNotes ?? []}
+                  loMidi={item?.loMidi ?? 48}
+                  hiMidi={item?.hiMidi ?? 72}
+                  tolCents={Number(prefs.tol)}
+                  theme={theme}
+                  trailRef={player.trailRef}
+                  currentTimeRef={player.currentTimeRef}
+                  onFrame={player.onFrame}
+                  anyOctave={prefs.anyOctave === "on"}
+                />
+              )}
             </div>
           </MicGate>
         </div>
