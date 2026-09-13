@@ -32,7 +32,15 @@ export const LADDER: readonly Rung[] = [
   { key: "listen", fixedRoot: true, shape: "leap", playAnchor: true, playReference: true, guide: false, sing: false },
   { key: "walk", fixedRoot: true, shape: "walk", playAnchor: false, playReference: true, guide: true, sing: true },
   { key: "echo", fixedRoot: true, shape: "leap", playAnchor: false, playReference: true, guide: true, sing: true },
-  { key: "transpose", fixedRoot: false, shape: "leap", playAnchor: false, playReference: true, guide: true, sing: true },
+  {
+    key: "transpose",
+    fixedRoot: false,
+    shape: "leap",
+    playAnchor: false,
+    playReference: true,
+    guide: true,
+    sing: true,
+  },
   { key: "cold", fixedRoot: false, shape: "leap", playAnchor: false, playReference: false, guide: false, sing: true },
 ];
 

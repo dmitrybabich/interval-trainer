@@ -20,11 +20,27 @@ interface Props {
   theme: "light" | "dark";
   trailRef: () => readonly (number | null)[];
   onFrame: (cb: (dt: number) => void) => () => void;
+  blind: boolean;
 }
 
-export function TrainerScreen({ ui, actions, theme, trailRef, onFrame }: Props) {
+// Blind practice: while singing, hide your live pitch + error readouts so you match
+// by ear (audio cues stay); the real readout returns once you land / advance.
+function blindDisplay(
+  ui: UiSnapshot,
+  blind: boolean,
+  blindLabel: string,
+): { blindSing: boolean; liveNote: string; liveCents: string; status: string; statusVariant: UiSnapshot["statusVariant"] } {
+  const blindSing = blind && ui.cue === "sing";
+  if (!blindSing) {
+    return { blindSing, liveNote: ui.liveNote, liveCents: ui.liveCents, status: ui.status, statusVariant: ui.statusVariant };
+  }
+  return { blindSing, liveNote: "—", liveCents: "", status: blindLabel, statusVariant: "" };
+}
+
+export function TrainerScreen({ ui, actions, theme, trailRef, onFrame, blind }: Props) {
   const { t } = useTranslation();
   const done = ui.idx >= ui.targets.length;
+  const { blindSing, liveNote, liveCents, status, statusVariant } = blindDisplay(ui, blind, t("trainer.blindSing"));
   const target = ui.targets[ui.idx];
   const level = LEVELS[ui.levelIdx];
   const isSingleNote = level?.steps.length === 0;
@@ -51,18 +67,36 @@ export function TrainerScreen({ ui, actions, theme, trailRef, onFrame }: Props) 
   };
 
   return (
-    <div className="mx-auto flex size-full min-h-[440px] max-w-xl flex-col gap-2">
+    <div className="mx-auto flex size-full min-h-[440px] max-w-none flex-col gap-2">
       {/* Minimal toolbar: back + title on the left, icon actions on the right. */}
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={actions.leaveTrainer} title={t("trainer.backToLevels")} className="text-muted-foreground">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={actions.leaveTrainer}
+          title={t("trainer.backToLevels")}
+          className="text-muted-foreground"
+        >
           <ArrowLeft className="size-5" />
         </Button>
         <div className="min-w-0 flex-1 truncate text-sm font-semibold">{levelTitle}</div>
         <div className="flex items-center gap-0.5">
-          <Button variant="ghost" size="icon" onClick={actions.playStartNote} title={t("trainer.playStartNote")} className="text-muted-foreground">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={actions.playStartNote}
+            title={t("trainer.playStartNote")}
+            className="text-muted-foreground"
+          >
             <Piano className="size-5" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={actions.replayAll} title={t("trainer.replay")} className="text-muted-foreground">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={actions.replayAll}
+            title={t("trainer.replay")}
+            className="text-muted-foreground"
+          >
             <Volume2 className="size-5" />
           </Button>
           {!isSingleNote && (
@@ -76,7 +110,13 @@ export function TrainerScreen({ ui, actions, theme, trailRef, onFrame }: Props) 
               {ui.direction === "down" ? <ArrowDown className="size-5" /> : <ArrowUp className="size-5" />}
             </Button>
           )}
-          <Button variant="ghost" size="icon" onClick={actions.newExercise} title={t("trainer.newExercise")} className="text-primary">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={actions.newExercise}
+            title={t("trainer.newExercise")}
+            className="text-primary"
+          >
             <RotateCcw className="size-5" />
           </Button>
         </div>
@@ -113,6 +153,7 @@ export function TrainerScreen({ ui, actions, theme, trailRef, onFrame }: Props) 
           theme={theme}
           trailRef={trailRef}
           onFrame={onFrame}
+          hideLive={blindSing}
         />
 
         {/* Sequence dots, overlaid top-center. */}
@@ -141,14 +182,18 @@ export function TrainerScreen({ ui, actions, theme, trailRef, onFrame }: Props) 
                 className="inline-block size-2 rounded-full bg-current"
               />
             )}
-            {ui.cue === "listen" ? t("trainer.cueListen") : ui.cue === "sing" ? t("trainer.cueSing") : t("trainer.cueNext")}
+            {ui.cue === "listen"
+              ? t("trainer.cueListen")
+              : ui.cue === "sing"
+                ? t("trainer.cueSing")
+                : t("trainer.cueNext")}
           </motion.div>
         </div>
 
         {/* Live note readout, overlaid bottom-left. */}
         <div className="pointer-events-none absolute bottom-3 left-4">
-          <div className="text-5xl font-extrabold leading-none tracking-tight">{ui.liveNote}</div>
-          <div className="mono mt-1 h-4 text-xs text-muted-foreground">{ui.liveCents}</div>
+          <div className="text-5xl font-extrabold leading-none tracking-tight">{liveNote}</div>
+          <div className="mono mt-1 h-4 text-xs text-muted-foreground">{liveCents}</div>
         </div>
 
         {/* Coverage tally + status, overlaid bottom-right. */}
@@ -156,12 +201,12 @@ export function TrainerScreen({ ui, actions, theme, trailRef, onFrame }: Props) 
           <div
             className={cn(
               "max-w-[60vw] text-sm",
-              ui.statusVariant === "good" && "font-semibold text-[hsl(var(--good))]",
-              ui.statusVariant === "near" && "text-[hsl(var(--near))]",
-              ui.statusVariant === "" && "text-muted-foreground",
+              statusVariant === "good" && "font-semibold text-[hsl(var(--good))]",
+              statusVariant === "near" && "text-[hsl(var(--near))]",
+              statusVariant === "" && "text-muted-foreground",
             )}
           >
-            {ui.status}
+            {status}
           </div>
           {hitNotes >= totalNotes && (
             <div className="mono text-[11px] font-semibold text-[hsl(var(--good))]">{t("trainer.rangeCovered")}</div>

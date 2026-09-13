@@ -1,4 +1,6 @@
 import {
+  ANY_OCTAVE_OPTIONS,
+  BLIND_OPTIONS,
   DEFAULT_PREFS,
   DIR_OPTIONS,
   FOUND_HINT_OPTIONS,
@@ -22,6 +24,8 @@ const VALID_VALUES: Record<keyof Prefs, readonly string[]> = {
   foundHint: FOUND_HINT_OPTIONS.map((o) => o.value),
   octaveMode: OCTAVE_MODE_OPTIONS.map((o) => o.value),
   tutorial: TUTORIAL_OPTIONS.map((o) => o.value),
+  anyOctave: ANY_OCTAVE_OPTIONS.map((o) => o.value),
+  blind: BLIND_OPTIONS.map((o) => o.value),
 };
 
 // localStorage keys, all try/catch-guarded so private-mode failures are silent.

@@ -1,14 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { DEFAULT_PREFS } from "@/lib/constants";
-import {
-  loadPrefs,
-  loadSavedRange,
-  PREFS_KEY,
-  RANGE_KEY,
-  savePrefs,
-  saveRange,
-} from "@/lib/persistence";
+import { loadPrefs, loadSavedRange, PREFS_KEY, RANGE_KEY, savePrefs, saveRange } from "@/lib/persistence";
 
 describe("persistence", () => {
   beforeEach(() => {

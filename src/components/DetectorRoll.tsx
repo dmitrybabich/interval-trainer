@@ -210,7 +210,18 @@ function drawLiveDot(sc: Scene, trail: readonly PitchPoint[]): void {
  * Sustained notes render as fading bars — the ones you held longest stay boldest
  * — while the raw sung pitch draws as a live trail on top. Redraws every frame.
  */
-export function DetectorRoll({ theme, loMidi, hiMidi, trailRef, dwellsRef, liveRef, refsRef, droneMidi, clockRef, onFrame }: Props) {
+export function DetectorRoll({
+  theme,
+  loMidi,
+  hiMidi,
+  trailRef,
+  dwellsRef,
+  liveRef,
+  refsRef,
+  droneMidi,
+  clockRef,
+  onFrame,
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rangeRef = useRef({ loMidi, hiMidi });
   rangeRef.current = { loMidi, hiMidi };

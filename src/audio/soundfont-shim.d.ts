@@ -3,6 +3,7 @@
 declare module "soundfont-player" {
   export interface Instrument {
     play(midi: number, when?: number, opts?: { duration?: number; gain?: number }): void;
+    stop(when?: number): void;
   }
 
   interface SoundfontStatic {

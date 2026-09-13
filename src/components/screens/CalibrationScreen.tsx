@@ -24,7 +24,7 @@ interface Props {
 export function CalibrationScreen({ ui, onCapture, onBack }: Props) {
   const { t } = useTranslation();
   return (
-    <div className="mx-auto w-full max-w-xl">
+    <div className="mx-auto w-full max-w-none">
       <Card className="rounded-3xl">
         <CardContent className="p-6">
           <div className="mb-4 flex items-center justify-between">

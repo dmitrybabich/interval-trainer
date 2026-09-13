@@ -101,6 +101,16 @@ export const TUTORIAL_OPTIONS = [
   { value: "off", label: "Free practice" },
 ] as const satisfies readonly Option<"on" | "off">[];
 
+export const ANY_OCTAVE_OPTIONS = [
+  { value: "off", label: "Off" },
+  { value: "on", label: "On" },
+] as const satisfies readonly Option<"off" | "on">[];
+
+export const BLIND_OPTIONS = [
+  { value: "off", label: "Off" },
+  { value: "on", label: "On" },
+] as const satisfies readonly Option<"off" | "on">[];
+
 export const THEME_OPTIONS = [
   { value: "light", label: "Light" },
   { value: "dark", label: "Dark" },
@@ -115,6 +125,8 @@ export type GuideVal = (typeof GUIDE_OPTIONS)[number]["value"];
 export type FoundHintVal = (typeof FOUND_HINT_OPTIONS)[number]["value"];
 export type OctaveModeVal = (typeof OCTAVE_MODE_OPTIONS)[number]["value"];
 export type TutorialVal = (typeof TUTORIAL_OPTIONS)[number]["value"];
+export type AnyOctaveVal = (typeof ANY_OCTAVE_OPTIONS)[number]["value"];
+export type BlindVal = (typeof BLIND_OPTIONS)[number]["value"];
 
 export interface Prefs {
   range: RangeVal;
@@ -126,6 +138,10 @@ export interface Prefs {
   foundHint: FoundHintVal;
   octaveMode: OctaveModeVal;
   tutorial: TutorialVal;
+  anyOctave: AnyOctaveVal;
+  // Blind practice: hide your live pitch while singing so you match by ear, then
+  // reveal how you did after you land the note (fading-feedback / ear-first).
+  blind: BlindVal;
 }
 
 export const DEFAULT_PREFS: Prefs = {
@@ -138,4 +154,6 @@ export const DEFAULT_PREFS: Prefs = {
   foundHint: "on",
   octaveMode: "on",
   tutorial: "on",
+  anyOctave: "off",
+  blind: "off",
 };

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { randInt } from "@/lib/music";
-import { loadKeyOctave, loadPianoView, type PianoView, saveKeyOctave,savePianoView } from "@/lib/persistence";
+import { loadKeyOctave, loadPianoView, type PianoView, saveKeyOctave, savePianoView } from "@/lib/persistence";
 
 // The piano's octave picker is independent of the singer's vocal range: a fixed
 // C2–C5, so the same choices show on every device and setup.

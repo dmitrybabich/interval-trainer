@@ -40,7 +40,10 @@ const MIN_HI_OVER_LO = 7;
  * Two-step vocal-range calibration flow. Owns its own rAF loop reading pitch
  * from the shared AudioEngine.
  */
-export function useCalibration(engine: AudioEngine, active: boolean): {
+export function useCalibration(
+  engine: AudioEngine,
+  active: boolean,
+): {
   ui: CalibUi;
   capture: () => void;
   reset: () => void;

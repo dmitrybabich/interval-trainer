@@ -50,6 +50,9 @@ export class AudioEngine {
   private buf: Float32Array<ArrayBuffer> | null = null;
   private micStream: MediaStream | null = null;
 
+  private recorder: MediaRecorder | null = null;
+  private recordedChunks: Blob[] = [];
+
   private piano: SoundfontInstrument | null = null;
   private pianoLoading = false;
 
@@ -95,7 +98,8 @@ export class AudioEngine {
 
   async startMic(onMicDenied: (message: string) => void): Promise<void> {
     if (this.analyser) return; // already running — reuse it
-    const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const AC =
+      window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     const ctx = new AC();
     await ctx.resume();
     this.audioCtx = ctx;
@@ -171,6 +175,25 @@ export class AudioEngine {
     } else {
       this.pianoNote(freq, when, dur, gain, true);
     }
+  }
+
+  /**
+   * Schedule one note (by MIDI number) on the sampled piano if loaded, else the
+   * synth. `when` is an absolute AudioContext time; `gain` is a per-note multiplier
+   * so a melody guide can sit above quieter accompaniment.
+   */
+  scheduleNote(midi: number, when: number, dur: number, gain: number): void {
+    if (!this.audioCtx) return;
+    if (this.piano) {
+      this.piano.play(midi, when, { duration: dur, gain: gain * PIANO_GAIN });
+    } else {
+      this.pianoNote(midiToFreq(midi), when, dur, gain, false);
+    }
+  }
+
+  /** Cut every note the sampled piano has playing or scheduled ahead. */
+  stopScheduled(): void {
+    this.piano?.stop();
   }
 
   /**
@@ -313,10 +336,7 @@ export class AudioEngine {
    * clear — so the ear hooks the interval to a melody it already knows. Empty
    * `anchor` = skip straight to the bare interval. Mic deafened throughout.
    */
-  playAnchorPrimer(
-    anchor: readonly { freq: number; beats: number }[],
-    intervalFreqs: readonly number[],
-  ): number {
+  playAnchorPrimer(anchor: readonly { freq: number; beats: number }[], intervalFreqs: readonly number[]): number {
     if (!this.audioCtx) return 0;
     logSound("ANCHOR_PRIMER", `${anchor.length} melody + ${intervalFreqs.length} interval`);
     const start = this.audioCtx.currentTime + 0.05;
@@ -485,9 +505,40 @@ export class AudioEngine {
     return { midi, freq, clarity, rms, singing, muted };
   }
 
+  /**
+   * Record the mic (your voice, dry — the backing is in your headphones, not the
+   * mic) so you can play your take back. Best-effort: a no-op if the mic isn't live
+   * or MediaRecorder is unsupported, or if a recording is already running.
+   */
+  startRecording(): void {
+    if (!this.micStream || this.recorder || typeof MediaRecorder === "undefined") return;
+    const mime = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "";
+    const rec = mime ? new MediaRecorder(this.micStream, { mimeType: mime }) : new MediaRecorder(this.micStream);
+    this.recordedChunks = [];
+    rec.ondataavailable = (e) => {
+      if (e.data.size > 0) this.recordedChunks.push(e.data);
+    };
+    rec.start();
+    this.recorder = rec;
+  }
+
+  /** Stop the current recording and resolve its audio Blob (null if nothing captured). */
+  async stopRecording(): Promise<Blob | null> {
+    const rec = this.recorder;
+    if (!rec) return null;
+    this.recorder = null;
+    return new Promise((resolve) => {
+      rec.onstop = () =>
+        resolve(this.recordedChunks.length > 0 ? new Blob(this.recordedChunks, { type: rec.mimeType || "audio/webm" }) : null);
+      rec.stop();
+    });
+  }
+
   /** Clean shutdown — used on unmount or leaving the trainer. */
   dispose(): void {
     this.stopDrone();
+    if (this.recorder && this.recorder.state !== "inactive") this.recorder.stop();
+    this.recorder = null;
     this.micStream?.getTracks().forEach((t) => t.stop());
     void this.audioCtx?.close();
     this.audioCtx = null;

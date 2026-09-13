@@ -5,14 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AudioEngine } from "@/audio/AudioEngine";
 import { i18n } from "@/i18n";
 import { resolveAnchor, scaleWalkSteps } from "@/lib/anchors";
-import {
-  ANCHOR_HOLD_MS,
-  DEFAULT_PREFS,
-  PASS_MS,
-  TOUCH_MS,
-  TRAIL_LENGTH,
-  WRONG_NOTE_HINT_MS,
-} from "@/lib/constants";
+import { ANCHOR_HOLD_MS, DEFAULT_PREFS, PASS_MS, TOUCH_MS, TRAIL_LENGTH, WRONG_NOTE_HINT_MS } from "@/lib/constants";
 import { LEVELS } from "@/lib/levels";
 import { midiToFreq, midiToName, midiToOctave, octaveBoundsWithin, pick, randInt, rangeBounds } from "@/lib/music";
 import { loadAnchorChoices, loadSavedRange, saveRange } from "@/lib/persistence";
@@ -282,8 +275,7 @@ export function useTrainer(): {
     // Foundation rungs carry explicit degrees (absolute steps from the tonic);
     // otherwise fall back to the interval's leap, optionally scale-walked.
     const steps =
-      rung?.degrees ??
-      (rung?.shape === "walk" && interval !== undefined ? scaleWalkSteps(interval) : lv.steps);
+      rung?.degrees ?? (rung?.shape === "walk" && interval !== undefined ? scaleWalkSteps(interval) : lv.steps);
     if (rung) {
       // Cold rung withholds the reference like ear mode; the rest play it like
       // guided. Driving s.mode off the rung lets the pitch loop's existing
@@ -322,12 +314,7 @@ export function useTrainer(): {
     } else {
       const uncovered: number[] = [];
       for (let m = sLo; m <= sHi; m++) if (!s.covered.has(m)) uncovered.push(m);
-      start =
-        uncovered.length > 0
-          ? pick(uncovered)
-          : sHi >= sLo
-            ? randInt(sLo, sHi)
-            : Math.round((lo + hi) / 2);
+      start = uncovered.length > 0 ? pick(uncovered) : sHi >= sLo ? randInt(sLo, sHi) : Math.round((lo + hi) / 2);
       if (rung?.fixedRoot) s.fixedRoot = start;
     }
 
@@ -533,13 +520,23 @@ export function useTrainer(): {
       // Listen-only rung never cues "sing" — you're only meant to take the sound in.
       const cue: CueState = s.listenOnly ? "listen" : done ? "next" : sample.muted ? "listen" : "sing";
       if (cue !== s.prevCue) {
-        console.log(`🎚️ cue ${s.prevCue ?? "—"} → ${cue} (note ${s.idx + 1}/${s.targets.length}, muted=${sample.muted})`);
+        console.log(
+          `🎚️ cue ${s.prevCue ?? "—"} → ${cue} (note ${s.idx + 1}/${s.targets.length}, muted=${sample.muted})`,
+        );
         s.prevCue = cue;
       }
 
       // Anchor beep — re-find the previous note between leaps. Suppressed on the
       // no-support rung.
-      if (!done && !s.listenOnly && !s.noChime && s.idx > 0 && sample.singing && sungMidi != null && target !== undefined) {
+      if (
+        !done &&
+        !s.listenOnly &&
+        !s.noChime &&
+        s.idx > 0 &&
+        sample.singing &&
+        sungMidi != null &&
+        target !== undefined
+      ) {
         const anchor = s.targets[s.idx - 1];
         if (anchor !== undefined) {
           const onAnchor = Math.abs((sungMidi - anchor) * CENTS_PER_SEMITONE) <= s.tolCents;
@@ -637,7 +634,9 @@ export function useTrainer(): {
               status = i18n.t("status.hearItAgain");
               statusVariant = "";
               const current = s.targets[s.idx];
-              console.log(`🎯 HINT target ${current === undefined ? "—" : midiToName(current)} (note ${s.idx + 1}/${s.targets.length})`);
+              console.log(
+                `🎯 HINT target ${current === undefined ? "—" : midiToName(current)} (note ${s.idx + 1}/${s.targets.length})`,
+              );
               engine.playHint(midiToFreq(hintNote));
             }
           } else {

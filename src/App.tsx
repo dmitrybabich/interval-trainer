@@ -1,23 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { HashRouter, matchPath, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import { Layout } from "@/components/Layout";
 import { CalibrationScreen } from "@/components/screens/CalibrationScreen";
 import { DetectorScreen } from "@/components/screens/DetectorScreen";
+import { PracticeItemPlayer, PracticeLibrary } from "@/components/screens/PracticeScreen";
 import { SetupScreen } from "@/components/screens/SetupScreen";
 import { TrainerScreen } from "@/components/screens/TrainerScreen";
-import { WarmupScreen } from "@/components/screens/WarmupScreen";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useCalibration } from "@/hooks/useCalibration";
 import { useDetector } from "@/hooks/useDetector";
 import { usePrefs } from "@/hooks/usePrefs";
 import { useTheme } from "@/hooks/useTheme";
 import { useTrainer } from "@/hooks/useTrainer";
-import { useWarmup } from "@/hooks/useWarmup";
 import { LEVELS } from "@/lib/levels";
 import { RANGE_BASE } from "@/lib/music";
 import { loadSavedRange } from "@/lib/persistence";
-import { trackById, WARMUP_TRACKS } from "@/lib/warmupTracks";
 
 const RANGE_LOW_OFFSET = 7;
 const RANGE_HIGH_OFFSET = 12;
@@ -30,10 +28,6 @@ function estimatedRange(base: number): { lo: number; hi: number } {
 
 function isTrainerPath(pathname: string): boolean {
   return pathname.startsWith("/level/");
-}
-
-function isWarmupPath(pathname: string): boolean {
-  return pathname.startsWith("/warmup");
 }
 
 function isDetectorPath(pathname: string): boolean {
@@ -99,22 +93,14 @@ function AppInner() {
 
   const [setupStatus, setSetupStatus] = useState("");
   const [savedRange, setSavedRange] = useState(() => loadSavedRange());
-  // Gates the trainer route: only render it for a session we actually started.
-  // A cold deep-link / refresh has no live session (or mic gesture), so it
-  // redirects to setup instead of showing an empty meter.
+  // Gates the trainer route: only render for a session we started (a cold deep-link
+  // has no live session/mic, so it redirects to setup instead of an empty meter).
   const [sessionActive, setSessionActive] = useState(false);
   const sessionActiveRef = useRef(false);
-
-  // Which warm-up track is selected comes straight from the URL, so every track
-  // is its own bookmarkable link. Falls back to the first track off /warmup.
-  const warmupMatch = matchPath("/warmup/:trackId", location.pathname);
-  const track = trackById(warmupMatch?.params.trackId);
-  const warmupAudio = `${import.meta.env.BASE_URL}${track.audio}`;
 
   const { theme, setTheme } = useTheme();
   const { prefs, setPref } = usePrefs();
   const { ui, actions, bufTrail, onFrame, engine } = useTrainer();
-  const warmup = useWarmup(warmupAudio);
   const detector = useDetector();
   const onCalibScreen = location.pathname === "/calibrate";
   const calib = useCalibration(engine, onCalibScreen);
@@ -179,36 +165,15 @@ function AppInner() {
     [actions, prefs, navigate],
   );
 
-  // Warm-up is a plain page: the card just navigates there (bookmarkable). The
-  // page itself grants the mic on tap via MicGate, since browsers require a
-  // gesture — so a cold deep-link / refresh lands on a working page, not a
-  // redirect.
-  const warmupStart = warmup.start;
-  const startWarmupMic = useCallback(() => {
-    void warmupStart(() => undefined);
-  }, [warmupStart]);
-
-  // Same shape as the warm-up: a plain bookmarkable page that grants the mic on
-  // tap (browsers gate getUserMedia behind a gesture).
+  // Plain bookmarkable pages grant the mic on tap (browsers gate getUserMedia behind
+  // a gesture).
   const detectorStart = detector.start;
   const startDetectorMic = useCallback(() => {
     void detectorStart(() => undefined);
   }, [detectorStart]);
 
-  // Reopen the mic on refresh if already granted, tear it down on leave.
-  const warmupStop = warmup.stop;
-  useMicRouteLifecycle({
-    active: isWarmupPath(location.pathname),
-    ready: warmup.ui.ready,
-    start: startWarmupMic,
-    stop: warmupStop,
-  });
-  // Also stop when switching tracks — the new track's audio element reloads with
-  // a fresh src, and the lifecycle's permission effect reopens the mic.
-  useEffect(() => warmupStop, [track.id, warmupStop]);
-
-  // Detector mirrors the warm-up lifecycle: silently reopen the mic on a
-  // refresh if permission is already granted, and tear it down on leave.
+  // Detector: silently reopen the mic on a refresh if permission is already granted,
+  // and tear it down on leave.
   useMicRouteLifecycle({
     active: isDetectorPath(location.pathname),
     ready: detector.ui.ready,
@@ -226,7 +191,6 @@ function AppInner() {
 
   // Leaving the trainer is just navigation — the pathname effect above does the
   // actual teardown, so the button and the browser back button behave the same.
-  // Back to the intervals hub, since that's where a level is launched from.
   const leaveTrainer = useCallback(() => navigate("/intervals"), [navigate]);
 
   useReplayHintKey(isTrainerPath(location.pathname), actions.playHint);
@@ -234,98 +198,81 @@ function AppInner() {
   const trainerActions = { ...actions, leaveTrainer };
 
   return (
-    <>
-      {/* Backing track for the warm-up. Persists across routes so its ref is live
-          before the screen mounts; preload="auto" so scrubbing is responsive.
-          src follows the URL-selected track. */}
-      <audio ref={warmup.audioRef} src={warmupAudio} preload="auto" />
-      <Routes location={location}>
+    <Routes location={location}>
+      <Route
+        element={
+          <Layout
+            prefs={prefs}
+            setPref={setPref}
+            theme={theme}
+            onThemeChange={setTheme}
+            savedRange={savedRange}
+            onCalibrate={() => void beginCalibration()}
+          />
+        }
+      >
         <Route
+          path="/"
           element={
-            <Layout
-              prefs={prefs}
-              setPref={setPref}
+            <DetectorScreen
+              ui={detector.ui}
               theme={theme}
-              onThemeChange={setTheme}
-              savedRange={savedRange}
-              onCalibrate={() => void beginCalibration()}
+              loMidi={detectorRange.lo}
+              hiMidi={detectorRange.hi}
+              trailRef={detector.trailRef}
+              dwellsRef={detector.dwellsRef}
+              liveRef={detector.liveRef}
+              refsRef={detector.refsRef}
+              clockRef={detector.clockRef}
+              onFrame={detector.onFrame}
+              onStart={startDetectorMic}
+              onPlayKey={detector.playKey}
+              onDrone={detector.setDrone}
             />
           }
-        >
-          <Route
-            path="/"
-            element={
-              <DetectorScreen
-                ui={detector.ui}
+        />
+        <Route
+          path="/intervals"
+          element={
+            <SetupScreen
+              prefs={prefs}
+              savedRange={savedRange}
+              onStartLevel={(i) => void beginLevel(i)}
+              onCalibrate={() => void beginCalibration()}
+              status={setupStatus}
+            />
+          }
+        />
+        <Route
+          path="/calibrate"
+          element={<CalibrationScreen ui={calib.ui} onCapture={calib.capture} onBack={() => navigate("/intervals")} />}
+        />
+        <Route
+          path="/level/:idx"
+          element={
+            sessionActive ? (
+              <TrainerScreen
+                ui={ui}
+                actions={trainerActions}
                 theme={theme}
-                loMidi={detectorRange.lo}
-                hiMidi={detectorRange.hi}
-                trailRef={detector.trailRef}
-                dwellsRef={detector.dwellsRef}
-                liveRef={detector.liveRef}
-                refsRef={detector.refsRef}
-                clockRef={detector.clockRef}
-                onFrame={detector.onFrame}
-                onStart={startDetectorMic}
-                onPlayKey={detector.playKey}
-                onDrone={detector.setDrone}
+                trailRef={bufTrail}
+                onFrame={onFrame}
+                blind={prefs.blind === "on"}
               />
-            }
-          />
-          <Route
-            path="/intervals"
-            element={
-              <SetupScreen
-                prefs={prefs}
-                savedRange={savedRange}
-                onStartLevel={(i) => void beginLevel(i)}
-                onCalibrate={() => void beginCalibration()}
-                status={setupStatus}
-              />
-            }
-          />
-          <Route
-            path="/calibrate"
-            element={<CalibrationScreen ui={calib.ui} onCapture={calib.capture} onBack={() => navigate("/intervals")} />}
-          />
-          <Route
-            path="/level/:idx"
-            element={
-              sessionActive ? (
-                <TrainerScreen ui={ui} actions={trainerActions} theme={theme} trailRef={bufTrail} onFrame={onFrame} />
-              ) : (
-                <Navigate to="/intervals" replace />
-              )
-            }
-          />
-          <Route path="/warmup" element={<Navigate to={`/warmup/${WARMUP_TRACKS[0].id}`} replace />} />
-          <Route
-            path="/warmup/:trackId"
-            element={
-              <WarmupScreen
-                ui={warmup.ui}
-                tracks={WARMUP_TRACKS}
-                track={track}
-                notes={track.notes}
-                loMidi={track.loMidi}
-                hiMidi={track.hiMidi}
-                tolCents={Number(prefs.tol)}
-                theme={theme}
-                trailRef={warmup.trailRef}
-                currentTimeRef={warmup.currentTimeRef}
-                onFrame={warmup.onFrame}
-                onStart={startWarmupMic}
-                onTogglePlay={warmup.togglePlay}
-                onSeek={warmup.seek}
-                onSelectTrack={(id) => navigate(`/warmup/${id}`)}
-                onBack={() => navigate("/intervals")}
-              />
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
-    </>
+            ) : (
+              <Navigate to="/intervals" replace />
+            )
+          }
+        />
+        <Route path="/practice" element={<PracticeLibrary />} />
+        <Route path="/practice/:itemId" element={<PracticeItemPlayer />} />
+        {/* Old per-category routes are gone — everything is a practice item now. */}
+        <Route path="/warmup/*" element={<Navigate to="/practice" replace />} />
+        <Route path="/exercises/*" element={<Navigate to="/practice" replace />} />
+        <Route path="/songs/*" element={<Navigate to="/practice" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Route>
+    </Routes>
   );
 }
 

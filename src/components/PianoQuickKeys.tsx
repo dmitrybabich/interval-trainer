@@ -117,7 +117,9 @@ export function PianoQuickKeys({ piano }: Props) {
                   onClick={() => piano.setKeyOctave(o)}
                   className={cn(
                     "rounded-md border px-2.5 py-1 text-sm tabular-nums transition-colors",
-                    o === piano.keyOctave ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/50",
+                    o === piano.keyOctave
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border hover:border-primary/50",
                   )}
                 >
                   C{o}
@@ -127,13 +129,19 @@ export function PianoQuickKeys({ piano }: Props) {
             <div className="flex rounded-md border border-border p-0.5 text-sm">
               <button
                 onClick={() => piano.setView("octave")}
-                className={cn("flex-1 rounded px-3 py-1 transition-colors", piano.view === "octave" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}
+                className={cn(
+                  "flex-1 rounded px-3 py-1 transition-colors",
+                  piano.view === "octave" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+                )}
               >
                 {t("detector.octaveOnly")}
               </button>
               <button
                 onClick={() => piano.setView("range")}
-                className={cn("flex-1 rounded px-3 py-1 transition-colors", piano.view === "range" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}
+                className={cn(
+                  "flex-1 rounded px-3 py-1 transition-colors",
+                  piano.view === "range" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+                )}
               >
                 {t("detector.fullRange")}
               </button>

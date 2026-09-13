@@ -16,6 +16,9 @@ interface Props {
   theme: "light" | "dark";
   trailRef: () => readonly (number | null)[];
   onFrame: (cb: (dt: number) => void) => () => void;
+  // Blind practice: hide YOUR live pitch (trail + needle) so you match by ear. The
+  // target line/band stay visible so you still know what to aim for.
+  hideLive?: boolean;
 }
 
 function cssHsl(varName: string): string {
@@ -107,10 +110,11 @@ export function PitchMeter({
   theme,
   trailRef,
   onFrame,
+  hideLive = false,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const propsRef = useRef({ sungMidi, target, targets, currentIdx, done, tolCents, loMidi, hiMidi, covered });
-  propsRef.current = { sungMidi, target, targets, currentIdx, done, tolCents, loMidi, hiMidi, covered };
+  const propsRef = useRef({ sungMidi, target, targets, currentIdx, done, tolCents, loMidi, hiMidi, covered, hideLive });
+  propsRef.current = { sungMidi, target, targets, currentIdx, done, tolCents, loMidi, hiMidi, covered, hideLive };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -219,33 +223,36 @@ export function PitchMeter({
         });
       }
 
-      // Sung-pitch trail.
-      const trail = trailRef();
-      ctx.lineWidth = 3;
-      ctx.lineJoin = "round";
-      ctx.strokeStyle = col.trail;
-      ctx.globalAlpha = 0.85;
-      ctx.beginPath();
-      let started = false;
-      trail.forEach((m, i) => {
-        if (m == null) {
-          started = false;
-          return;
-        }
-        const x = LEFT_GUTTER + (i / TRAIL_LENGTH) * (w - LEFT_GUTTER);
-        const y = yFor(m);
-        if (started) {
-          ctx.lineTo(x, y);
-        } else {
-          ctx.moveTo(x, y);
-          started = true;
-        }
-      });
-      ctx.stroke();
-      ctx.globalAlpha = 1;
+      // Your live pitch (trail + needle). Hidden in blind practice so you match by
+      // ear — the target line/band stay so you know what to aim for.
+      if (!p.hideLive) {
+        const trail = trailRef();
+        ctx.lineWidth = 3;
+        ctx.lineJoin = "round";
+        ctx.strokeStyle = col.trail;
+        ctx.globalAlpha = 0.85;
+        ctx.beginPath();
+        let started = false;
+        trail.forEach((m, i) => {
+          if (m == null) {
+            started = false;
+            return;
+          }
+          const x = LEFT_GUTTER + (i / TRAIL_LENGTH) * (w - LEFT_GUTTER);
+          const y = yFor(m);
+          if (started) {
+            ctx.lineTo(x, y);
+          } else {
+            ctx.moveTo(x, y);
+            started = true;
+          }
+        });
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
 
       // Current needle + dot at the right edge.
-      if (p.sungMidi != null && p.target !== undefined && !p.done) {
+      if (p.sungMidi != null && p.target !== undefined && !p.done && !p.hideLive) {
         const y = yFor(p.sungMidi);
         const near = Math.abs((p.sungMidi - p.target) * 100) <= p.tolCents;
         const color = near ? col.good : col.near;

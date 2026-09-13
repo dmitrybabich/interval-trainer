@@ -8,7 +8,23 @@
   "nav": {
     "detector": "Detector",
     "intervals": "Intervals",
-    "warmup": "Warm-up"
+    "warmup": "Warm-up",
+    "exercises": "Exercises",
+    "songs": "Songs",
+    "practice": "Practice"
+  },
+  "practice": {
+    "title": "Practice tracks",
+    "yourTracks": "Your recordings",
+    "songs": "Songs",
+    "songsHint": "Upload & sing songs (MIDI is scored)",
+    "addTrack": "Add a backing track (audio or video)",
+    "playPause": "Play / pause (Space)",
+    "record": "Record (R)",
+    "recording": "Recording {{time}}",
+    "takes": "Your takes",
+    "noTakes": "Hit record and sing along — your takes show up here.",
+    "shortcuts": "Space play/pause · R record · ← → seek 5s"
   },
   "setup": {
     "yourRange": "Your range",
@@ -46,6 +62,51 @@
       "track2": "Track 2"
     }
   },
+  "songs": {
+    "title": "Sing along",
+    "score": "{{pct}}%  ({{hit}}/{{passed}})",
+    "scorePending": "Sing to score",
+    "inTune": "{{pct}}% in tune · {{bias}}",
+    "listen": "Listen",
+    "pause": "Pause",
+    "record": "Record",
+    "stop": "Stop",
+    "yourTake": "Your take",
+    "history": "Past attempts",
+    "compare": "Compare",
+    "compareTitle": "{{title}} — progress",
+    "compareEmpty": "Sing this song at least twice to compare attempts.",
+    "colNote": "Note",
+    "colTrend": "Trend",
+    "backToLibrary": "Back to songs",
+    "addTitle": "Add a song",
+    "addHint": "Upload a vocal to derive the pitch line. Add an instrumental (e.g. a stemdeck stem) as the backing, or leave it empty to sing along to the vocal itself.",
+    "namePlaceholder": "Song name",
+    "backingLabel": "Backing track (optional — leave empty to sing along to the vocal)",
+    "vocalLabel": "Vocal (to derive the melody)",
+    "addButton": "Transcribe & add",
+    "transcribing": "Transcribing… {{pct}}%",
+    "addMidiTitle": "Add a song from MIDI",
+    "addMidiHint": "Upload a .mid and pick which track is the melody — exact notes, no audio guesswork.",
+    "midiFileLabel": "MIDI file (.mid)",
+    "chooseTrack": "Melody track (what you'll be scored against)",
+    "addMidiButton": "Add song",
+    "tracks": {
+      "test": "Test song"
+    }
+  },
+  "exercises": {
+    "tracks": {
+      "e1": "Two repeating notes",
+      "e2": "Repeating 2nd",
+      "e3": "3rd",
+      "e4": "3rd up & down",
+      "e5": "Repeating 3rd",
+      "e6": "Flexibility on the 3rd",
+      "e7": "Descending 5th flexibility",
+      "e8": "Scale"
+    }
+  },
   "detector": {
     "random": "Random note",
     "replay": "Replay last note",
@@ -64,6 +125,7 @@
     "cueListen": "Listen",
     "cueSing": "Sing now",
     "cueNext": "Next…",
+    "blindSing": "Match it by ear…",
     "rangeCovered": "✓ Whole range covered",
     "climbRung": "Got it — next step",
     "climbKey": "Got it — next key ↑",
@@ -82,7 +144,10 @@
     "five": { "name": "The fifth", "hint": "Hold it until it's dead on." },
     "oneThreeFive": { "name": "The triad", "hint": "Sing each note, hold to confirm." },
     "arpeggio": { "name": "Full arpeggio", "hint": "Sing the whole arpeggio, hold each note." },
-    "arpeggioSolo": { "name": "On your own", "hint": "No confirming chime — land every note yourself to clear the key." }
+    "arpeggioSolo": {
+      "name": "On your own",
+      "hint": "No confirming chime — land every note yourself to clear the key."
+    }
   },
   "status": {
     "listenGuided": "Listen to the target, then sing it.",
@@ -134,6 +199,10 @@
     "guideToneHint": "A quiet drone holds note 1 until you land it.",
     "foundChime": "Found-note chime",
     "foundChimeHint": "Play the note the moment you land on it.",
+    "anyOctave": "Match any octave",
+    "anyOctaveHint": "Count a note as hit in any octave — handy when the detector reads your voice an octave off.",
+    "blind": "Blind practice",
+    "blindHint": "Hide your live pitch while singing so you match by ear; reveal how you did after you land the note.",
     "precision": "Precision",
     "precisionHint": "How close counts as on-pitch.",
     "hold": "Hold to confirm",
@@ -154,6 +223,8 @@
     "tutorial": { "on": "Tutorial ladder", "off": "Free practice" },
     "guide": { "off": "Off", "on": "On" },
     "foundHint": { "on": "On", "off": "Off" },
+    "anyOctave": { "on": "On", "off": "Off" },
+    "blind": { "on": "On", "off": "Off" },
     "theme": { "light": "Light", "dark": "Dark" },
     "range": {
       "low": "Low (bass / baritone)",

@@ -76,7 +76,12 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: "Inter Variable", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-family:
+      "Inter Variable",
+      -apple-system,
+      BlinkMacSystemFont,
+      system-ui,
+      sans-serif;
     font-variant-numeric: tabular-nums;
     /* very soft warm vignette — barely there, adds depth without color noise */
     background-image: radial-gradient(1200px 700px at 50% -15%, hsl(var(--card)), hsl(var(--background)));

@@ -1,6 +1,7 @@
 // Soundfont-player has no @types package; declare the shape we use.
 export interface SoundfontInstrument {
   play(midi: number, when?: number, opts?: { duration?: number; gain?: number }): void;
+  stop(when?: number): void;
 }
 
 export interface PitchSample {

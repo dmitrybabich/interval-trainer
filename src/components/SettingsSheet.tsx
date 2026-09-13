@@ -1,17 +1,13 @@
 import { useTranslation } from "react-i18next";
 
 import { Segmented } from "@/components/ui/segmented";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { Theme } from "@/hooks/useTheme";
 import { SUPPORTED_LANGUAGES } from "@/i18n";
 import {
+  ANY_OCTAVE_OPTIONS,
+  BLIND_OPTIONS,
   DIR_OPTIONS,
   FOUND_HINT_OPTIONS,
   GUIDE_OPTIONS,
@@ -118,31 +114,77 @@ export function SettingsSheet({
         <div className="mt-3">
           <Section title={t("settings.sectionExercise")}>
             <Row label={t("settings.tutorial")} hint={t("settings.tutorialHint")}>
-              <Segmented value={prefs.tutorial} options={localize("tutorial", TUTORIAL_OPTIONS)} onValueChange={(v) => setPref("tutorial", v)} />
+              <Segmented
+                value={prefs.tutorial}
+                options={localize("tutorial", TUTORIAL_OPTIONS)}
+                onValueChange={(v) => setPref("tutorial", v)}
+              />
             </Row>
             <Row label={t("settings.mode")} hint={t("settings.modeHint")}>
-              <Segmented value={prefs.mode} options={localize("mode", MODE_OPTIONS)} onValueChange={(v) => setPref("mode", v)} />
+              <Segmented
+                value={prefs.mode}
+                options={localize("mode", MODE_OPTIONS)}
+                onValueChange={(v) => setPref("mode", v)}
+              />
             </Row>
             <Row label={t("settings.direction")} hint={t("settings.directionHint")}>
-              <Segmented value={prefs.direction} options={localize("direction", DIR_OPTIONS)} onValueChange={(v) => setPref("direction", v)} />
+              <Segmented
+                value={prefs.direction}
+                options={localize("direction", DIR_OPTIONS)}
+                onValueChange={(v) => setPref("direction", v)}
+              />
             </Row>
             <Row label={t("settings.sweep")} hint={t("settings.sweepHint")}>
-              <Segmented value={prefs.octaveMode} options={localize("octaveMode", OCTAVE_MODE_OPTIONS)} onValueChange={(v) => setPref("octaveMode", v)} />
+              <Segmented
+                value={prefs.octaveMode}
+                options={localize("octaveMode", OCTAVE_MODE_OPTIONS)}
+                onValueChange={(v) => setPref("octaveMode", v)}
+              />
             </Row>
           </Section>
 
           <Section title={t("settings.sectionFeedback")}>
             <Row label={t("settings.guideTone")} hint={t("settings.guideToneHint")}>
-              <Segmented value={prefs.guide} options={localize("guide", GUIDE_OPTIONS)} onValueChange={(v) => setPref("guide", v)} />
+              <Segmented
+                value={prefs.guide}
+                options={localize("guide", GUIDE_OPTIONS)}
+                onValueChange={(v) => setPref("guide", v)}
+              />
             </Row>
             <Row label={t("settings.foundChime")} hint={t("settings.foundChimeHint")}>
-              <Segmented value={prefs.foundHint} options={localize("foundHint", FOUND_HINT_OPTIONS)} onValueChange={(v) => setPref("foundHint", v)} />
+              <Segmented
+                value={prefs.foundHint}
+                options={localize("foundHint", FOUND_HINT_OPTIONS)}
+                onValueChange={(v) => setPref("foundHint", v)}
+              />
+            </Row>
+            <Row label={t("settings.anyOctave")} hint={t("settings.anyOctaveHint")}>
+              <Segmented
+                value={prefs.anyOctave}
+                options={localize("anyOctave", ANY_OCTAVE_OPTIONS)}
+                onValueChange={(v) => setPref("anyOctave", v)}
+              />
+            </Row>
+            <Row label={t("settings.blind")} hint={t("settings.blindHint")}>
+              <Segmented
+                value={prefs.blind}
+                options={localize("blind", BLIND_OPTIONS)}
+                onValueChange={(v) => setPref("blind", v)}
+              />
             </Row>
             <Row label={t("settings.precision")} hint={t("settings.precisionHint")}>
-              <SelectRow value={prefs.tol} options={localize("tol", TOL_OPTIONS)} onValueChange={(v) => setPref("tol", v)} />
+              <SelectRow
+                value={prefs.tol}
+                options={localize("tol", TOL_OPTIONS)}
+                onValueChange={(v) => setPref("tol", v)}
+              />
             </Row>
             <Row label={t("settings.hold")} hint={t("settings.holdHint")}>
-              <SelectRow value={prefs.hold} options={localize("hold", HOLD_OPTIONS)} onValueChange={(v) => setPref("hold", v)} />
+              <SelectRow
+                value={prefs.hold}
+                options={localize("hold", HOLD_OPTIONS)}
+                onValueChange={(v) => setPref("hold", v)}
+              />
             </Row>
           </Section>
 
@@ -158,7 +200,11 @@ export function SettingsSheet({
               </Row>
             ) : (
               <Row label={t("settings.voiceRange")} hint={t("settings.voiceRangePreset")}>
-                <SelectRow value={prefs.range} options={localize("range", RANGE_OPTIONS)} onValueChange={(v) => setPref("range", v)} />
+                <SelectRow
+                  value={prefs.range}
+                  options={localize("range", RANGE_OPTIONS)}
+                  onValueChange={(v) => setPref("range", v)}
+                />
               </Row>
             )}
             <Row label={t("settings.theme")} hint={t("settings.themeHint")}>

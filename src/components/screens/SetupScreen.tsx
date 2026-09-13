@@ -43,7 +43,15 @@ function IntervalGlyph({ steps, direction }: { steps: readonly number[]; directi
         return (
           <g key={i}>
             {prev !== undefined && (
-              <line x1={6 + (i - 1) * step} y1={yOf(prev)} x2={x} y2={y} stroke="hsl(var(--primary))" strokeWidth="1.5" opacity="0.5" />
+              <line
+                x1={6 + (i - 1) * step}
+                y1={yOf(prev)}
+                x2={x}
+                y2={y}
+                stroke="hsl(var(--primary))"
+                strokeWidth="1.5"
+                opacity="0.5"
+              />
             )}
             <circle cx={x} cy={y} r="3.5" fill="hsl(var(--primary))" />
           </g>
@@ -69,7 +77,7 @@ export function SetupScreen({ prefs, savedRange, onStartLevel, onCalibrate, stat
   const rangeCaption = savedRange ? t("setup.calibrated") : t("setup.estimate");
 
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-col gap-5">
+    <div className="mx-auto flex w-full max-w-none flex-col gap-5">
       {/* Your range — tap to calibrate. */}
       <button
         onClick={onCalibrate}

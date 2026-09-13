@@ -7,6 +7,25 @@ export const SEMITONES_PER_OCTAVE = 12;
 
 export const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"] as const;
 
+export const CENTS_PER_SEMITONE = 100;
+
+// Signed cents between a sung pitch and a reference note (+ sharp, − flat). In
+// any-octave mode the interval folds to the nearest octave (mod 12), so C2 counts
+// as landing on C4.
+export function signedCentsBetween(sungMidi: number, noteMidi: number, anyOctave: boolean): number {
+  let semis = sungMidi - noteMidi;
+  if (anyOctave) {
+    semis = ((semis % SEMITONES_PER_OCTAVE) + SEMITONES_PER_OCTAVE) % SEMITONES_PER_OCTAVE;
+    if (semis > SEMITONES_PER_OCTAVE / 2) semis -= SEMITONES_PER_OCTAVE;
+  }
+  return semis * CENTS_PER_SEMITONE;
+}
+
+// Absolute cents — magnitude of the deviation, for tolerance checks.
+export function centsBetween(sungMidi: number, noteMidi: number, anyOctave: boolean): number {
+  return Math.abs(signedCentsBetween(sungMidi, noteMidi, anyOctave));
+}
+
 // MIDI note number (69 = A4) → frequency in Hz.
 export function midiToFreq(midi: number): number {
   return A4 * Math.pow(2, (midi - A4_MIDI) / SEMITONES_PER_OCTAVE);
@@ -30,11 +49,7 @@ export function midiToOctave(midi: number): number {
 
 // The [lo, hi] MIDI bounds of one octave, clamped to the singable range.
 // Returns null if that octave doesn't overlap the range at all.
-export function octaveBoundsWithin(
-  octave: number,
-  rangeLo: number,
-  rangeHi: number,
-): readonly [number, number] | null {
+export function octaveBoundsWithin(octave: number, rangeLo: number, rangeHi: number): readonly [number, number] | null {
   const octLo = (octave + 1) * SEMITONES_PER_OCTAVE; // C of this octave
   const octHi = octLo + SEMITONES_PER_OCTAVE - 1; // B of this octave
   const lo = Math.max(octLo, rangeLo);
@@ -63,11 +78,7 @@ export function pick<T>(arr: readonly T[]): T {
 
 // Singable window shared by the exercise generator and the coverage map, so
 // the notes you're asked to sing are exactly the ones on the map.
-export function rangeBounds(
-  loMidi: number | null,
-  hiMidi: number | null,
-  base: number,
-): readonly [number, number] {
+export function rangeBounds(loMidi: number | null, hiMidi: number | null, base: number): readonly [number, number] {
   const DEFAULT_LOW_OFFSET = 7;
   const DEFAULT_HIGH_OFFSET = 12;
   const lo = loMidi ?? base - DEFAULT_LOW_OFFSET;

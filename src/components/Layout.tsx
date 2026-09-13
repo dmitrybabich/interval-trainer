@@ -10,7 +10,6 @@ import { Segmented } from "@/components/ui/segmented";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Theme } from "@/hooks/useTheme";
 import type { Prefs } from "@/lib/constants";
-import { WARMUP_TRACKS } from "@/lib/warmupTracks";
 
 const ISSUES_URL = "https://github.com/dmitrybabich/interval-trainer/issues";
 
@@ -23,21 +22,28 @@ interface Props {
   onCalibrate: () => void;
 }
 
-type Activity = "detector" | "intervals" | "warmup";
+type Activity = "detector" | "intervals" | "practice";
 
-// The top-level activities the header switcher hops between. Deep screens
-// (a running level, calibration) aren't here — they carry their own back button
-// and hide the switcher entirely.
+// The top-level activities the header switcher hops between. Practice is the hub for
+// warm-ups, exercises, songs, and your own recordings; those sub-pages highlight it.
+// Deep screens (a running level, calibration) carry their own back button.
 const ACTIVITY_PATHS: Record<Activity, string> = {
   detector: "/",
   intervals: "/intervals",
-  warmup: `/warmup/${WARMUP_TRACKS[0].id}`,
+  practice: "/practice",
 };
 
 function activityForPath(pathname: string): Activity | null {
   if (pathname === "/") return "detector";
   if (pathname.startsWith("/intervals")) return "intervals";
-  if (pathname.startsWith("/warmup")) return "warmup";
+  if (
+    pathname.startsWith("/practice") ||
+    pathname.startsWith("/warmup") ||
+    pathname.startsWith("/exercises") ||
+    pathname.startsWith("/songs")
+  ) {
+    return "practice";
+  }
   return null; // level / calibrate — no switcher
 }
 
@@ -46,7 +52,7 @@ function activityForPath(pathname: string): Activity | null {
 function GithubMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" className={className}>
-      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/>
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
     </svg>
   );
 }
@@ -67,12 +73,12 @@ export function Layout({ prefs, setPref, theme, onThemeChange, savedRange, onCal
   const activityOptions = [
     { value: "detector" as const, label: t("nav.detector") },
     { value: "intervals" as const, label: t("nav.intervals") },
-    { value: "warmup" as const, label: t("nav.warmup") },
+    { value: "practice" as const, label: t("nav.practice") },
   ];
 
   return (
     <div className="flex h-dvh flex-col">
-      <header className="mx-auto flex w-full max-w-xl items-center justify-between gap-3 px-4 py-3">
+      <header className="mx-auto flex w-full max-w-none items-center justify-between gap-3 px-4 py-3">
         {activity ? (
           <Segmented value={activity} options={activityOptions} onValueChange={(a) => navigate(ACTIVITY_PATHS[a])} />
         ) : (

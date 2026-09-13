@@ -32,7 +32,7 @@ export default defineConfig({
       workbox: {
         // Cache the app shell. Piano samples + pitchy come from esm.sh / GitHub Pages
         // CDNs at runtime — cache those on first fetch so a revisit works offline.
-        globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
+        globPatterns: ["**/*.{js,css,html,svg,png,woff2,midi}"],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.origin === "https://esm.sh" || url.origin.includes("githack") || url.href.includes("midi-js-soundfonts"),
