@@ -1,5 +1,5 @@
 allowBuilds:
-  core-js: set this to true or false
+  core-js: true
   esbuild: true
 overrides:
   vite: 6.4.3
